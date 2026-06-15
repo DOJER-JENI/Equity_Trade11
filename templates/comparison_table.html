@@ -1,0 +1,24 @@
+<table>
+    <thead>
+        <tr>
+            <th>Company</th>
+            <th>RSI</th>
+            <th>SMA20</th>
+            <th>SMA50</th>
+            <th>Trend</th>
+            <th>Signal</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in data %}
+            <tr>
+                <td>{{ row.Company }}</td>
+                <td>{{ row.RSI }}</td>
+                <td>{{ row.SMA20 }}</td>
+                <td>{{ row.SMA50 }}</td>
+                <td>{{ row.Trend }}</td>
+                <td>{{ row.Signal }}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

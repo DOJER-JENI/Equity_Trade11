@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="stack">
+    <section class="panel section">
+        <div style="display:flex; justify-content:space-between; gap:20px; align-items:flex-start; flex-wrap:wrap;">
+            <div>
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Portfolio summary, default watchlist preview, market status, and navigation hub.</p>
+            </div>
+            <div class="badge" style="background:{{ market.color }}1a; color:{{ market.color }};">
+                <i class="fa-solid fa-circle"></i> {{ market.label }} · {{ market.updated_at }}
+            </div>
+        </div>
+    </section>
+
+    <section style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px;">
+        <div class="panel section"><div class="muted">Watchlists</div><h2>{{ stats.watchlists }}</h2></div>
+        <div class="panel section"><div class="muted">Tracked stocks</div><h2>{{ stats.stocks }}</h2></div>
+        <div class="panel section"><div class="muted">Stock universe</div><h2>{{ stats.universe }}</h2></div>
+    </section>
+
+    <section class="split">
+        <div class="panel section">
+            <h2 style="margin-top:0;">Default Watchlist Preview</h2>
+            {% if default_watchlist %}
+                <p class="muted">{{ default_watchlist.name }}</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>Stock</th><th>Close</th><th>RSI</th><th>Open</th></tr></thead>
+                        <tbody>
+                            {% for row in watchlist_rows[:6] %}
+                            <tr>
+                                <td><a href="{{ url_for('main.chart', company=row.Company) }}">{{ row.Company }}</a></td>
+                                <td>{{ "%.2f"|format(row.Close or 0) }}</td>
+                                <td>{{ "%.2f"|format(row.RSI or 0) }}</td>
+                                <td><a class="ghost-btn" href="{{ url_for('main.chart', company=row.Company) }}">View</a></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4">No stocks in this watchlist yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">Create a watchlist to see your preview here.</div>
+            {% endif %}
+        </div>
+
+        <div class="stack">
+            <div class="panel section">
+                <h2 style="margin-top:0;">Top Gainers</h2>
+                {% for row in gainers %}
+                    <a href="{{ url_for('main.chart', company=row.Company) }}" style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #e6ebf7;">
+                        <strong>{{ row.Company }}</strong><span style="color:#18a874;">+{{ "%.2f"|format(row.ChangePct or 0) }}%</span>
+                    </a>
+                {% endfor %}
+            </div>
+            <div class="panel section">
+                <h2 style="margin-top:0;">Top Losers</h2>
+                {% for row in losers %}
+                    <a href="{{ url_for('main.chart', company=row.Company) }}" style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #e6ebf7;">
+                        <strong>{{ row.Company }}</strong><span style="color:#e56363;">{{ "%.2f"|format(row.ChangePct or 0) }}%</span>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- <section class="panel section">
+        <h2 style="margin-top:0;">Navigation Hub</h2>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:16px;">
+            <a class="primary-btn" href="{{ url_for('watchlists.default_watchlist') }}">Default Watchlist</a>
+            <a class="ghost-btn" href="{{ url_for('watchlists.index') }}">Manage Watchlists</a>
+            <a class="ghost-btn" href="{{ url_for('main.screener') }}">Filter Engine</a>
+            <a class="ghost-btn" href="{{ url_for('profile.index') }}">Profile</a>
+            {% if current_user.is_admin %}
+            <a class="ghost-btn" href="{{ url_for('admin.dashboard') }}">Admin Dashboard</a>
+            {% endif %}
+        </div>
+    </section> -->
+</section>
+{% endblock %}

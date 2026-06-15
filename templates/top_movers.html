@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<h2>Top Gainers</h2>
+
+<table>
+    <tr>
+        <th>Company</th>
+        <th>Change %</th>
+    </tr>
+
+    {% for stock in gainers %}
+    <tr>
+        <td>{{ stock.Company }}</td>
+        <td>{{ "%.2f"|format(stock.ChangePct) }}%</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+
+<h2>Top Losers</h2>
+
+<table>
+    <tr>
+        <th>Company</th>
+        <th>Change %</th>
+    </tr>
+
+    {% for stock in losers %}
+    <tr>
+        <td>{{ stock.Company }}</td>
+        <td>{{ "%.2f"|format(stock.ChangePct) }}%</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

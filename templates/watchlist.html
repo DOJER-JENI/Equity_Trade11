@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="panel section">
+    <h1 class="page-title">Watchlists</h1>
+    <p class="page-subtitle">Create default and custom watchlists for multiple companies.</p>
+
+    <form method="post" action="{{ url_for('watchlists.create') }}" style="margin:20px 0;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+            <input class="text-input" name="name" placeholder="New watchlist name" style="max-width:320px;" required>
+            <label><input type="checkbox" name="is_default"> Set as default</label>
+            <button class="primary-btn" type="submit">Create</button>
+        </div>
+    </form>
+
+    <div class="stack">
+        {% for watchlist in watchlists %}
+        <div class="panel section" style="padding:18px;">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+                <div>
+                    <div style="font-weight:800;">{{ watchlist.name }} {% if watchlist.is_default %}(Default){% endif %}</div>
+                    <div class="muted">{{ watchlist.items|length }} companies</div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <a class="ghost-btn" href="{{ url_for('watchlists.detail', watchlist_id=watchlist.id) }}">Open</a>
+                    <form method="post" action="{{ url_for('watchlists.delete_watchlist', watchlist_id=watchlist.id) }}">
+                        <button class="danger-btn" type="submit">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">No watchlists created yet.</div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

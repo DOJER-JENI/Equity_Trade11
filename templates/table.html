@@ -1,0 +1,401 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="panel section">
+    <div class="breadcrumbs">
+        <a href="{{ url_for('main.home') }}">{{ watchlist.name }}</a>
+        <span>/</span>
+        <span>Table view</span>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; gap:18px; align-items:flex-end; flex-wrap:wrap; margin-bottom:18px;">
+        <div>
+            <h1 class="page-title" style="font-size:2.35rem; margin-bottom:8px;">{{ watchlist.name }}</h1>
+            <p class="page-subtitle" style="margin:0;">Latest market snapshot and screener filters for this watchlist.</p>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a class="ghost-btn" href="{{ url_for('main.manage_watchlist', watchlist_id=watchlist.id) }}">Manage companies</a>
+        </div>
+    </div>
+
+    <section class="panel section" style="margin-bottom:20px; background:linear-gradient(180deg,#fbfcff,#f4f7fe);">
+        <div style="display:flex; justify-content:space-between; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom:18px;">
+            <div>
+                <h3 style="margin:0;">Filter Engine</h3>
+                <p class="page-subtitle" style="margin-top:6px;">Add conditions, run the screener, and refresh the table without leaving this page.</p>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <select id="logicSelect" class="text-input" style="width:120px;">
+                    <option value="AND">AND</option>
+                    <option value="OR">OR</option>
+                </select>
+                <select id="sortBy" class="text-input" style="width:180px;">
+                    <option value="volume">Sort: Volume</option>
+                    <option value="last_price">Sort: Last Price</option>
+                    <option value="rsi_14">Sort: RSI</option>
+                    <option value="pe_ratio">Sort: P/E</option>
+                    <option value="market_cap">Sort: Market Cap</option>
+                </select>
+                <select id="sortDir" class="text-input" style="width:120px;">
+                    <option value="DESC">DESC</option>
+                    <option value="ASC">ASC</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="filters-container" class="stack" style="gap:12px; margin-bottom:16px;"></div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="ghost-btn" type="button" onclick="addFilter()">+ Add Filter</button>
+            <button class="primary-btn" type="button" onclick="runScreen()">Run Screen</button>
+            <button class="danger-btn" type="button" onclick="resetFilters()">Reset</button>
+            <button class="ghost-btn" type="button" onclick="exportCSV()">Export CSV</button>
+        </div>
+
+        <div style="margin-top:16px; display:flex; gap:18px; flex-wrap:wrap; color:#60708f; font-weight:700;">
+            <span id="results-count">0 Results</span>
+            <span id="generated-at">Data as of --</span>
+        </div>
+    </section>
+
+    <section class="panel section">
+        <h3 style="margin-top:0;">Results</h3>
+
+        {% if data %}
+        <div class="table-wrap">
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>S.No.</th>
+                        <th>Name</th>
+                        <th>CMP</th>
+                        <th>Market Cap</th>
+                        <th>P/E</th>
+                        <th>ROE</th>
+                        <th>52W High</th>
+                        <th>52W Low</th>
+                        <th>RSI</th>
+                        <th>Volume</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body">
+                    {% for row in data %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>
+                            <a href="{{ url_for('main.chart', company=row.Company) }}" style="color:#5b5ce2; font-weight:800;">
+                                {{ row.DisplayName or row.Company }}
+                            </a>
+                        </td>
+                        <td>{{ "%.2f"|format(row.Close or 0) }}</td>
+                        <td>{{ row.MarketCap or "-" }}</td>
+                        <td>{{ row.PE or "-" }}</td>
+                        <td>{{ row.ROE or "-" }}</td>
+                        <td>{{ row.High52 or "-" }}</td>
+                        <td>{{ row.Low52 or "-" }}</td>
+                        <td>{{ "%.2f"|format(row.RSI or 0) }}</td>
+                        <td>{{ row.Volume or "-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            No company data is available yet for this watchlist.
+        </div>
+        <div class="table-wrap" style="margin-top:18px;">
+            <table id="results-table">
+                <thead>
+                    <tr>
+                        <th>S.No.</th>
+                        <th>Name</th>
+                        <th>CMP</th>
+                        <th>Market Cap</th>
+                        <th>P/E</th>
+                        <th>ROE</th>
+                        <th>52W High</th>
+                        <th>52W Low</th>
+                        <th>RSI</th>
+                        <th>Volume</th>
+                    </tr>
+                </thead>
+                <tbody id="results-body"></tbody>
+            </table>
+        </div>
+        {% endif %}
+    </section>
+</section>
+
+<script>
+    let filterCount = 0;
+    let latestResults = [];
+
+    const fieldOptions = [
+        { value: "last_price", label: "Last Price" },
+        { value: "pct_change", label: "% Change" },
+        { value: "volume", label: "Volume" },
+        { value: "avg_volume_20d", label: "Avg Volume 20D" },
+        { value: "volume_ratio", label: "Volume Ratio" },
+        { value: "week_52_high", label: "52W High" },
+        { value: "week_52_low", label: "52W Low" },
+        { value: "market_cap", label: "Market Cap" },
+        { value: "pe_ratio", label: "P/E Ratio" },
+        { value: "eps", label: "EPS" },
+        { value: "roe", label: "ROE" },
+        { value: "rsi_14", label: "RSI 14" },
+        { value: "macd_line", label: "MACD Line" },
+        { value: "macd_signal", label: "MACD Signal" },
+        { value: "macd_histogram", label: "MACD Histogram" },
+        { value: "ema_20", label: "EMA 20" },
+        { value: "ema_50", label: "EMA 50" },
+        { value: "ema_200", label: "EMA 200" },
+        { value: "sector", label: "Sector" },
+        { value: "industry", label: "Industry" },
+        { value: "exchange", label: "Exchange" },
+        { value: "country", label: "Country" }
+    ];
+
+    const operatorOptions = ["=", "!=", "<", "<=", ">", ">=", "BETWEEN", "IN"];
+
+    function makeOptions(options, selected = "") {
+        return options.map(option => {
+            if (typeof option === "string") {
+                return `<option value="${option}" ${selected === option ? "selected" : ""}>${option}</option>`;
+            }
+            return `<option value="${option.value}" ${selected === option.value ? "selected" : ""}>${option.label}</option>`;
+        }).join("");
+    }
+
+    function addFilter() {
+        const container = document.getElementById("filters-container");
+        const row = document.createElement("div");
+        row.className = "panel";
+        row.style.padding = "14px";
+        row.style.borderRadius = "18px";
+        row.id = `filter-${filterCount}`;
+
+        row.innerHTML = `
+            <div style="display:grid; grid-template-columns: minmax(180px, 1.2fr) minmax(120px, 0.8fr) minmax(220px, 1.4fr) auto; gap:10px; align-items:center;">
+                <select class="text-input" id="field-${filterCount}">
+                    ${makeOptions(fieldOptions)}
+                </select>
+                <select class="text-input" id="op-${filterCount}" onchange="handleOperatorChange(${filterCount})">
+                    ${makeOptions(operatorOptions)}
+                </select>
+                <div id="value-wrap-${filterCount}">
+                    <input class="text-input" id="val-${filterCount}" placeholder="Enter value">
+                </div>
+                <button class="danger-btn" type="button" onclick="removeFilter('filter-${filterCount}')">Remove</button>
+            </div>
+        `;
+
+        container.appendChild(row);
+        filterCount += 1;
+    }
+
+    function handleOperatorChange(id) {
+        const op = document.getElementById(`op-${id}`).value;
+        const wrap = document.getElementById(`value-wrap-${id}`);
+
+        if (op === "BETWEEN") {
+            wrap.innerHTML = `
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <input class="text-input" id="val-${id}-min" placeholder="Min value">
+                    <input class="text-input" id="val-${id}-max" placeholder="Max value">
+                </div>
+            `;
+            return;
+        }
+
+        if (op === "IN") {
+            wrap.innerHTML = `<input class="text-input" id="val-${id}" placeholder="Comma separated values">`;
+            return;
+        }
+
+        wrap.innerHTML = `<input class="text-input" id="val-${id}" placeholder="Enter value">`;
+    }
+
+    function removeFilter(id) {
+        const row = document.getElementById(id);
+        if (row) {
+            row.remove();
+        }
+    }
+
+    function collectConditions() {
+        const rows = document.querySelectorAll("#filters-container > div");
+        const conditions = [];
+
+        rows.forEach(row => {
+            const id = row.id.split("-")[1];
+            const field = document.getElementById(`field-${id}`).value;
+            const operator = document.getElementById(`op-${id}`).value;
+
+            if (operator === "BETWEEN") {
+                const minVal = document.getElementById(`val-${id}-min`).value.trim();
+                const maxVal = document.getElementById(`val-${id}-max`).value.trim();
+
+                if (minVal !== "" && maxVal !== "") {
+                    conditions.push({
+                        field,
+                        operator,
+                        value: {
+                            min: minVal,
+                            max: maxVal
+                        }
+                    });
+                }
+                return;
+            }
+
+            const rawValue = document.getElementById(`val-${id}`).value.trim();
+            if (rawValue === "") {
+                return;
+            }
+
+            if (operator === "IN") {
+                conditions.push({
+                    field,
+                    operator,
+                    value: rawValue.split(",").map(v => v.trim()).filter(Boolean)
+                });
+                return;
+            }
+
+            conditions.push({
+                field,
+                operator,
+                value: rawValue
+            });
+        });
+
+        return conditions;
+    }
+
+    async function runScreen() {
+        const conditions = collectConditions();
+
+        try {
+            const res = await fetch("/api/screen", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    logic: document.getElementById("logicSelect").value,
+                    conditions,
+                    sort_by: document.getElementById("sortBy").value,
+                    sort_dir: document.getElementById("sortDir").value,
+                    limit: 100
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                alert(data.error || "Failed to run screen");
+                return;
+            }
+
+            latestResults = data.data || [];
+            renderResults(latestResults);
+            document.getElementById("results-count").innerText = `${data.count || 0} Results`;
+            document.getElementById("generated-at").innerText = `Data as of ${data.generated_at || "--"}`;
+        } catch (err) {
+            console.error(err);
+            alert("Something went wrong while running the screen.");
+        }
+    }
+
+    function renderResults(rows) {
+        const tbody = document.getElementById("results-body");
+        tbody.innerHTML = "";
+
+        if (!rows || rows.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align:center; color:#60708f;">No stocks matched the current filters.</td>
+                </tr>
+            `;
+            return;
+        }
+
+        rows.forEach((row, index) => {
+            const company = row.company || row.Company || "-";
+            const price = row.last_price ?? row.Close ?? "-";
+            const marketCap = row.market_cap ?? row.MarketCap ?? "-";
+            const pe = row.pe_ratio ?? row.PE ?? "-";
+            const roe = row.roe ?? row.ROE ?? "-";
+            const high52 = row.week_52_high ?? row.High52 ?? "-";
+            const low52 = row.week_52_low ?? row.Low52 ?? "-";
+            const rsi = row.rsi_14 ?? row.RSI ?? "-";
+            const volume = row.volume ?? row.Volume ?? "-";
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td><a href="/chart/${company}" style="color:#5b5ce2; font-weight:800;">${company}</a></td>
+                <td>${formatNumber(price)}</td>
+                <td>${formatNumber(marketCap)}</td>
+                <td>${formatNumber(pe)}</td>
+                <td>${formatNumber(roe)}</td>
+                <td>${formatNumber(high52)}</td>
+                <td>${formatNumber(low52)}</td>
+                <td>${formatNumber(rsi)}</td>
+                <td>${formatNumber(volume)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function formatNumber(value) {
+        if (value === null || value === undefined || value === "") {
+            return "-";
+        }
+
+        const num = Number(value);
+        if (Number.isNaN(num)) {
+            return value;
+        }
+
+        return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+
+    function resetFilters() {
+        document.getElementById("filters-container").innerHTML = "";
+        document.getElementById("logicSelect").value = "AND";
+        document.getElementById("sortBy").value = "volume";
+        document.getElementById("sortDir").value = "DESC";
+        document.getElementById("results-count").innerText = "0 Results";
+        document.getElementById("generated-at").innerText = "Data as of --";
+        latestResults = [];
+        addFilter();
+    }
+
+    function exportCSV() {
+        if (!latestResults.length) {
+            alert("No results to export.");
+            return;
+        }
+
+        const headers = Object.keys(latestResults[0]);
+        const rows = latestResults.map(row =>
+            headers.map(header => `"${String(row[header] ?? "").replace(/"/g, '""')}"`).join(",")
+        );
+
+        const csv = [headers.join(","), ...rows].join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "screen-results.csv";
+        link.click();
+
+        URL.revokeObjectURL(url);
+    }
+
+    window.onload = function () {
+        addFilter();
+    };
+</script>
+{% endblock %}

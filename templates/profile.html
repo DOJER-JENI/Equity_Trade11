@@ -1,0 +1,270 @@
+{% extends "layout.html" %}
+{% block head %}
+<style>
+    .profile-shell { display:grid; gap:16px; }
+    .profile-hero { display:flex; justify-content:space-between; gap:24px; align-items:center; flex-wrap:wrap; }
+    .profile-identity { display:flex; align-items:center; gap:20px; min-width:260px; }
+    .profile-avatar-xl { width:92px; height:92px; border-radius:50%; display:grid; place-items:center; background:#0f172a; color:#fff; font-size:2.4rem; font-weight:800; overflow:hidden; }
+    .profile-avatar-xl img { width:100%; height:100%; object-fit:cover; }
+    .member-card { padding:16px 18px; background:var(--panel-soft); border:1px solid var(--line); border-radius:8px; min-width:170px; }
+    .profile-grid { display:grid; grid-template-columns:260px minmax(0,1fr); gap:16px; align-items:start; }
+    .profile-sidebar { position:sticky; top:92px; padding:10px; display:grid; gap:4px; }
+    .profile-nav-item { width:100%; border:0; background:transparent; color:var(--text); border-radius:8px; padding:12px 14px; cursor:pointer; display:flex; gap:10px; align-items:center; font-weight:700; text-align:left; }
+    .profile-nav-item:hover,.profile-nav-item.is-active { background:var(--primary-soft); color:var(--primary); }
+    .profile-content { display:none; }
+    .profile-content.is-active { display:grid; gap:16px; }
+    .profile-card-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; }
+    .mini-card { padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+    .mini-card strong { display:block; font-size:1.7rem; margin-top:8px; }
+    .row-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .inline-form { display:inline-flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .status-pill { display:inline-flex; border-radius:999px; padding:6px 10px; font-size:.8rem; font-weight:800; background:var(--panel-soft); color:var(--muted); }
+    .status-pill.active { background:color-mix(in srgb, var(--success) 14%, var(--panel)); color:var(--success); }
+    .settings-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; }
+    .security-row { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:16px 0; border-bottom:1px solid var(--line); }
+    .security-row:last-child { border-bottom:0; }
+    .switch { position:relative; width:48px; height:28px; flex:0 0 auto; }
+    .switch input { position:absolute; opacity:0; }
+    .switch span { position:absolute; inset:0; border-radius:999px; background:var(--line); cursor:pointer; transition:background-color .2s ease; }
+    .switch span::after { content:""; position:absolute; width:22px; height:22px; left:3px; top:3px; border-radius:50%; background:#fff; transition:transform .2s ease; box-shadow:0 4px 12px rgba(0,0,0,.18); }
+    .switch input:checked + span { background:var(--primary-strong); }
+    .switch input:checked + span::after { transform:translateX(20px); }
+    @media (max-width:920px) {
+        .profile-grid { grid-template-columns:1fr; }
+        .profile-sidebar { position:static; grid-template-columns:repeat(2, minmax(0,1fr)); }
+        .settings-grid { grid-template-columns:1fr; }
+    }
+    @media (max-width:560px) {
+        .profile-sidebar { grid-template-columns:1fr; }
+        .profile-identity { align-items:flex-start; }
+    }
+</style>
+{% endblock %}
+{% block content %}
+{% set display_name = profile.full_name if profile and profile.full_name else current_user.username %}
+{% set member_since = current_user.created_at.strftime("%d %b %Y") if current_user.created_at else "Not available" %}
+<section class="profile-shell">
+    <section class="panel section profile-hero">
+        <div class="profile-identity">
+            <div class="profile-avatar-xl">
+                {% if profile and profile.profile_photo_url %}
+                <img src="{{ profile.profile_photo_url }}" alt="">
+                {% else %}
+                {{ current_user.username[:1]|upper }}
+                {% endif %}
+            </div>
+            <div>
+                <div class="badge">Account Workspace</div>
+                <h1 class="page-title" style="margin-top:10px;">{{ display_name }}</h1>
+                <p class="page-subtitle">{{ current_user.email }}</p>
+            </div>
+        </div>
+        <div class="member-card">
+            <div class="muted" style="font-size:.82rem; font-weight:800;">Member Since</div>
+            <strong>{{ member_since }}</strong>
+        </div>
+    </section>
+
+    <section class="profile-grid">
+        <aside class="panel profile-sidebar" aria-label="Profile sections">
+            <button class="profile-nav-item" data-section="dashboard" type="button"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
+            <button class="profile-nav-item" data-section="watchlists" type="button"><i class="fa-solid fa-list"></i> My Watchlists</button>
+            <button class="profile-nav-item" data-section="alerts" type="button"><i class="fa-regular fa-bell"></i> Alerts</button>
+            <button class="profile-nav-item" data-section="screens" type="button"><i class="fa-solid fa-filter"></i> Saved Screens</button>
+            <button class="profile-nav-item" data-section="account" type="button"><i class="fa-solid fa-gear"></i> Account Settings</button>
+            <button class="profile-nav-item" data-section="security" type="button"><i class="fa-solid fa-shield-halved"></i> Security</button>
+            <a class="profile-nav-item" href="{{ url_for('auth.logout') }}"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</a>
+        </aside>
+
+        <main class="stack">
+            <section class="profile-content" data-content="dashboard">
+                <div class="profile-card-grid">
+                    <div class="mini-card"><span class="muted">Watchlists</span><strong>{{ stats.watchlists }}</strong></div>
+                    <div class="mini-card"><span class="muted">Saved Stocks</span><strong>{{ stats.tracked_stocks }}</strong></div>
+                    <div class="mini-card"><span class="muted">Active Alerts</span><strong>{{ stats.alerts }}</strong></div>
+                    <div class="mini-card"><span class="muted">Saved Screens</span><strong>{{ stats.saved_screens }}</strong></div>
+                </div>
+                <section class="panel section">
+                    <h3 style="margin-top:0;">Recent Searches</h3>
+                    <div class="table-wrap">
+                        <table>
+                            <tbody>
+                                {% for item in history %}
+                                <tr><td><strong>{{ item.company }}</strong></td><td class="muted">{{ item.searched_at.strftime("%d %b %Y") if item.searched_at else "-" }}</td></tr>
+                                {% else %}
+                                <tr><td class="muted">No recent searches yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <section class="profile-content" data-content="watchlists">
+                <section class="panel section">
+                    <h2 style="margin-top:0;">My Watchlists</h2>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Name</th><th>Stock Count</th><th>Created</th><th>Actions</th></tr></thead>
+                            <tbody>
+                                {% for watchlist in watchlists %}
+                                <tr>
+                                    <td><strong>{{ watchlist.name }}</strong>{% if watchlist.is_default %} <span class="status-pill active">Default</span>{% endif %}</td>
+                                    <td>{{ watchlist.items|length }}</td>
+                                    <td>{{ watchlist.created_at.strftime("%d %b %Y") if watchlist.created_at else "-" }}</td>
+                                    <td class="row-actions">
+                                        <a class="ghost-btn" href="{{ url_for('watchlists.detail', watchlist_id=watchlist.id) }}">Open</a>
+                                        <form class="inline-form" method="post"action="{{ url_for('watchlists.rename', watchlist_id=watchlist.id) }}">
+                                            <input class="text-input" name="name" value="{{ watchlist.name }}" style="max-width:170px;" aria-label="Rename watchlist">
+                                            <button class="ghost-btn" type="submit">Edit</button>
+                                        </form>
+                                        <form method="post" action="{{ url_for('watchlists.delete_watchlist', watchlist_id=watchlist.id) }}" onsubmit="return confirm('Delete this watchlist?');">
+                                            <button class="danger-btn" type="submit">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="4" class="muted">No watchlists created yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <section class="profile-content" data-content="alerts">
+                <section class="panel section">
+                    <h2 style="margin-top:0;">Alerts</h2>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Name</th><th>Stock</th><th>Status</th><th>Triggers</th><th>Actions</th></tr></thead>
+                            <tbody>
+                                {% for alert in alerts %}
+                                <tr data-alert-row="{{ alert.id }}">
+                                    <td><strong>{{ alert.name }}</strong><div class="muted">{{ alert.condition_summary or "Custom condition" }}</div></td>
+                                    <td>{{ alert.ticker or "Any" }}</td>
+                                    <td><span class="status-pill {{ 'active' if alert.status == 'active' else '' }}">{{ alert.status|title }}</span></td>
+                                    <td>{{ alert.trigger_count or 0 }}</td>
+                                    <td class="row-actions">
+                                        <a class="ghost-btn" href="{{ url_for('main.alerts_page') }}">Edit</a>
+                                        <button class="ghost-btn" type="button" onclick="toggleAlert({{ alert.id }}, '{{ 'pause' if alert.status == 'active' else 'resume' }}')">{{ "Disable" if alert.status == "active" else "Enable" }}</button>
+                                        <button class="danger-btn" type="button" onclick="toggleAlert({{ alert.id }}, 'delete')">Delete</button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="5" class="muted">No alerts configured yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <section class="profile-content" data-content="screens">
+                <section class="panel section">
+                    <h2 style="margin-top:0;">Saved Screens</h2>
+                    <p class="page-subtitle">Your latest saved stock searches are available here until a full screen-builder save system is added.</p>
+                    <div class="table-wrap" style="margin-top:16px;">
+                        <table>
+                            <thead><tr><th>Stock</th><th>Exchange</th><th>Saved</th></tr></thead>
+                            <tbody>
+                                {% for item in history %}
+                                <tr><td><strong>{{ item.company }}</strong></td><td>{{ item.exchange }}</td><td>{{ item.searched_at.strftime("%d %b %Y") if item.searched_at else "-" }}</td></tr>
+                                {% else %}
+                                <tr><td colspan="3" class="muted">No saved screens yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </section>
+
+            <section class="profile-content" data-content="account">
+                <section class="panel section">
+                    <h2 style="margin-top:0;">Account Settings</h2>
+                    <form method="post" action="{{ url_for('profile.update_account') }}" enctype="multipart/form-data" class="stack">
+                        <div class="settings-grid">
+                            <div><label class="field-label">Change Name</label><input class="text-input" name="full_name" value="{{ profile.full_name if profile else '' }}"></div>
+                            <div><label class="field-label">Username</label><input class="text-input" name="username" value="{{ current_user.username }}" required></div>
+                            <div><label class="field-label">Change Email</label><input class="text-input" name="email" type="email" value="{{ current_user.email }}" required></div>
+                            <div><label class="field-label">Phone Number</label><input class="text-input" name="phone_number" maxlength="10" value="{{ profile.phone_number if profile else '' }}"></div>
+                            <div><label class="field-label">WhatsApp Number</label><input class="text-input" name="whatsapp_number" maxlength="15" value="{{ profile.whatsapp_number if profile else '' }}"></div>
+                            <div>
+                                <label class="field-label">Preferred Exchange</label>
+                                <select class="text-input" name="preferred_exchange">
+                                    <option value="NSE" {% if profile and profile.preferred_exchange == 'NSE' %}selected{% endif %}>NSE</option>
+                                    <option value="BSE" {% if profile and profile.preferred_exchange == 'BSE' %}selected{% endif %}>BSE</option>
+                                </select>
+                            </div>
+                            <div><label class="field-label">Profile Photo Upload</label><input class="text-input" name="profile_photo" type="file" accept="image/png,image/jpeg,image/webp"></div>
+                            <label style="display:flex; align-items:center; gap:10px; font-weight:700;"><input type="checkbox" name="sms_enabled" {% if profile and profile.sms_enabled %}checked{% endif %}> Enable SMS notifications</label>
+                        </div>
+                        <button class="primary-btn" type="submit">Save Account Settings</button>
+                    </form>
+                </section>
+            </section>
+
+            <section class="profile-content" data-content="security">
+                <section class="panel section">
+                    <h2 style="margin-top:0;">Security</h2>
+                    <div class="security-row">
+                        <div><strong>Two-factor authentication</strong><div class="muted">Adds a second verification step for future sign-ins.</div></div>
+                        <label class="switch"><input type="checkbox" id="twoFactorToggle"><span></span></label>
+                    </div>
+                    <div class="security-row">
+                        <div><strong>Active login sessions</strong><div class="muted">Current browser session for {{ current_user.email }}.</div></div>
+                        <span class="status-pill active">Active</span>
+                    </div>
+                    <div style="margin-top:20px;">
+                        <!-- <h3>Change Password</h3>
+                        <form method="post" action="{{ url_for('auth.change_password') }}" class="stack">
+                            <div><label class="field-label">Current Password</label><input class="text-input" name="current_password" type="password" required></div>
+                            <div><label class="field-label">New Password</label><input class="text-input" name="new_password" type="password" required></div>
+                            <div><label class="field-label">Confirm New Password</label><input class="text-input" name="confirm_password" type="password" required></div>
+                            <button class="primary-btn" type="submit">Change Password</button>
+                        </form> -->
+                    </div>
+                    <div class="security-row" style="margin-top:20px;">
+                        <div><strong>Logout from all devices</strong><div class="muted">Ends your current session immediately.</div></div>
+                        <a class="danger-btn" href="{{ url_for('auth.logout') }}">Logout All</a>
+                    </div>
+                    <div style="margin-top:18px;">
+                        <h3 style="color:var(--danger);">Delete Account</h3>
+                        <form method="post" action="{{ url_for('profile.delete_account') }}" onsubmit="return confirm('Are you sure you want to permanently delete your account?');">
+                            <button class="danger-btn" type="submit">Delete My Account</button>
+                        </form>
+                    </div>
+                </section>
+            </section>
+        </main>
+    </section>
+</section>
+<script>
+    const initialProfileSection = "{{ section }}";
+    function activateProfileSection(name) {
+        const fallback = document.querySelector("[data-content='dashboard']");
+        const target = document.querySelector(`[data-content="${name}"]`) || fallback;
+        document.querySelectorAll(".profile-content").forEach(section => section.classList.remove("is-active"));
+        document.querySelectorAll(".profile-nav-item[data-section]").forEach(item => item.classList.remove("is-active"));
+        target?.classList.add("is-active");
+        document.querySelector(`[data-section="${target?.dataset.content}"]`)?.classList.add("is-active");
+        const url = new URL(window.location.href);
+        url.searchParams.set("section", target?.dataset.content || "dashboard");
+        history.replaceState(null, "", url);
+    }
+    document.querySelectorAll(".profile-nav-item[data-section]").forEach(item => {
+        item.addEventListener("click", () => activateProfileSection(item.dataset.section));
+    });
+    activateProfileSection(initialProfileSection);
+
+    async function toggleAlert(alertId, action) {
+        if (action === "delete" && !confirm("Delete this alert?")) return;
+        const response = await fetch(`/api/alerts/${alertId}`, {
+            method: "PATCH",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({action})
+        });
+        if (response.ok) window.location.href = "{{ url_for('profile.index', section='alerts') }}";
+    }
+</script>
+{% endblock %}

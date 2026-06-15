@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="panel section">
+    <h1 class="page-title">Manage Alerts</h1>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Name</th>
+                    <th>Ticker</th>
+                    <th>Status</th>
+                    <th>Triggers</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alert in alerts %}
+                <tr>
+                    <td>{{ alert.user_id }}</td>
+                    <td>{{ alert.name }}</td>
+                    <td>{{ alert.ticker or "Any" }}</td>
+                    <td>{{ alert.status }}</td>
+                    <td>{{ alert.trigger_count }}</td>
+                    <td>{{ alert.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

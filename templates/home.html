@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="panel section split">
+    <div class="stack">
+        <div class="breadcrumbs">
+            <a href="{{ url_for('main.home') }}">Watchlists</a>
+            <span>/</span>
+            <span>Create new watchlist</span>
+        </div>
+        <h1 class="page-title">Create new watchlist</h1>
+        <!-- <p class="page-subtitle">
+            Give your list any name and keep it stored in the database. This matches the first step in your reference flow.
+        </p> -->
+        {% if error %}
+            <div class="empty-state" style="color:#c54f5f; border-style:solid;">{{ error }}</div>
+        {% endif %}
+        <form method="post" action="{{ url_for('main.create_watchlist') }}" class="stack">
+            <div>
+                <label class="field-label" for="name">Name</label>
+                <input class="text-input" id="name" name="name" placeholder="My Default list" required>
+            </div>
+            <div>
+                <button class="primary-btn" type="submit"><i class="fa-regular fa-floppy-disk"></i> Save</button>
+            </div>
+        </form>
+    </div>
+    <div class="panel section" style="background:linear-gradient(180deg,#fbfcff,#f4f7fe);">
+        <div class="stack">
+            <h2 style="margin:0;">Saved watchlists</h2>
+            <p class="muted" style="margin:0;">
+                Multiple watchlists help you separate ideas for different sectors, strategies. 
+            </p>
+            {% if watchlists %}
+                {% for watchlist in watchlists %}
+                    <div class="panel section" style="padding:18px;">
+                        <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+                            <div>
+                                <div style="font-weight:800; font-size:1.1rem;">{{ watchlist.name }}</div>
+                                <div class="muted">{{ watchlist.items|length }} companies saved</div>
+                            </div>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                                <a class="ghost-btn" href="{{ url_for('main.manage_watchlist', watchlist_id=watchlist.id) }}">Manage companies</a>
+                                <a class="primary-btn" href="{{ url_for('main.watchlist_table', watchlist_id=watchlist.id) }}">Open table</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    No watchlists yet. Create your first one to start adding companies.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

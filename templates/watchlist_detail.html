@@ -1,0 +1,97 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="panel section">
+    <h1 class="page-title">{{ watchlist.name }}</h1>
+    <p class="page-subtitle">Add NSE/BSE symbols with .NS or .BO, then open them in chart/table view.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="panel" style="padding:12px 16px; border-radius:14px; margin:16px 0; background:{% if category == 'success' %}#edf9d8{% else %}#fdeaea{% endif %}; color:{% if category == 'success' %}#456b12{% else %}#b42318{% endif %};">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('watchlists.rename', watchlist_id=watchlist.id) }}" style="margin:20px 0;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <input class="text-input" name="name" value="{{ watchlist.name }}" style="min-width:280px;">
+            <button class="ghost-btn" type="submit">Rename watchlist</button>
+        </div>
+    </form>
+
+    <form method="post" action="{{ url_for('watchlists.add_company', watchlist_id=watchlist.id) }}" style="margin:20px 0;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <input class="text-input" id="stockSearchInput" name="companies" placeholder="TCS.NS, INFY.NS, RELIANCE.BO" style="min-width:320px;">
+            <button class="ghost-btn" type="button" onclick="previewStock()">Search</button>
+            <button class="primary-btn" type="submit">Add stock</button>
+        </div>
+    </form>
+    <div id="stockPreview" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;"></div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:24px;">
+        {% for item in watchlist.items %}
+        <div class="panel" style="padding:10px 14px; border-radius:16px; display:flex; gap:10px; align-items:center;">
+            <span>{{ item.company }}</span>
+            <form method="post" action="{{ url_for('watchlists.remove_company', watchlist_id=watchlist.id, item_id=item.id) }}">
+                <button class="danger-btn" type="submit">X</button>
+            </form>
+        </div>
+        {% else %}
+        <div class="empty-state">No companies added yet.</div>
+        {% endfor %}
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Company</th>
+                    <th>Close</th>
+                    <th>Volume</th>
+                    <th>RSI</th>
+                    <th>SMA20</th>
+                    <th>SMA50</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><a href="{{ url_for('main.chart', company=row.Company) }}">{{ row.Company }}</a></td>
+                    <td>{{ row.Close or "-" }}</td>
+                    <td>{{ row.Volume or "-" }}</td>
+                    <td>{{ row.RSI or "-" }}</td>
+                    <td>{{ row.SMA20 or "-" }}</td>
+                    <td>{{ row.SMA50 or "-" }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6">No company data yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+<script>
+async function previewStock() {
+    const symbol = document.getElementById("stockSearchInput").value.split(",")[0].trim().toUpperCase();
+    const box = document.getElementById("stockPreview");
+    if (!symbol) return;
+    box.innerHTML = "<div class='empty-state' style='padding:12px;'>Searching DB first, then API if needed...</div>";
+    const res = await fetch(`/api/stock-search?symbol=${encodeURIComponent(symbol)}`);
+    const data = await res.json();
+    if (!res.ok) {
+        box.innerHTML = `<div class='empty-state' style='padding:12px; color:#b42318;'>${data.error || "Stock not found"}</div>`;
+        return;
+    }
+    box.innerHTML = `
+      <button class="ghost-btn" type="button" onclick="document.getElementById('stockSearchInput').value='${data.symbol}'">
+        ${data.symbol} · ${data.name || data.base_symbol} · ${Number(data.price || 0).toFixed(2)}
+      </button>
+    `;
+}
+</script>
+{% endblock %}

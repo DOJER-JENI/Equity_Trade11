@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="panel section split">
+    <div class="stack" style="justify-content:center;">
+        <span class="badge"><i class="fa-solid fa-bolt"></i> Watchlists, charts, screening</span>
+        <!-- <h1 class="page-title">Build a Screener-style stock workspace for your manager.</h1>
+        <p class="page-subtitle">
+            This setup gives you named watchlists, company management, table view, and a richer company analysis page.
+            Login to continue and we can keep refining the UI flow from your reference video.
+        </p> -->
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <a class="primary-btn" href="{{ url_for('auth.login') }}">Login</a>
+            <a class="ghost-btn" href="{{ url_for('auth.register') }}">Register</a>
+        </div>
+    </div>
+    <!-- <div class="panel section" style="background:linear-gradient(180deg,#fbfcff,#f4f7fe);">
+        <div class="stack">
+            <h2 style="margin:0;">Current focus</h2>
+            <div class="panel section" style="padding:18px;"><strong>1.</strong> Create a named watchlist</div>
+            <div class="panel section" style="padding:18px;"><strong>2.</strong> Add any number of companies</div>
+            <div class="panel section" style="padding:18px;"><strong>3.</strong> Open table view and company detail pages</div>
+            <div class="panel section" style="padding:18px;"><strong>4.</strong> Improve chart filters and alerts next</div>
+        </div>
+    </div> -->
+</section>
+{% endblock %}
