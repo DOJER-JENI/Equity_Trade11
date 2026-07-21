@@ -1,5 +1,47 @@
 {% extends "layout.html" %}
 
+{% block head %}
+<style>
+    .rich-search-shell {
+        position: relative;
+    }
+    .watchlist-autocomplete {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        width: 100%;
+        background: #fff;
+        border: 1px solid #d9e2ef;
+        border-radius: 8px;
+        box-shadow: 0 10px 28px rgba(15,23,42,.08);
+        z-index: 99;
+        max-height: 260px;
+        overflow-y: auto;
+        display: none;
+    }
+    .watchlist-autocomplete.show {
+        display: block;
+    }
+    .watchlist-autocomplete .autocomplete-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        font-weight: 600;
+        border-bottom: 1px solid #e6ebf7;
+    }
+    .watchlist-autocomplete .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    .watchlist-autocomplete .autocomplete-item:hover,
+    .watchlist-autocomplete .autocomplete-item.highlighted {
+        background: #f1f5f9;
+    }
+    .watchlist-autocomplete .autocomplete-item.highlighted {
+        background: #eaf1ff;
+        border-left: 3px solid #2563eb;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="panel section">
     <h1 class="page-title">{{ watchlist.name }}</h1>
@@ -24,7 +66,10 @@
 
     <form method="post" action="{{ url_for('watchlists.add_company', watchlist_id=watchlist.id) }}" style="margin:20px 0;">
         <div style="display:flex; gap:12px; flex-wrap:wrap;">
-            <input class="text-input" id="stockSearchInput" name="companies" placeholder="TCS.NS, INFY.NS, RELIANCE.BO" style="min-width:320px;">
+            <div class="rich-search-shell" style="min-width:320px;">
+                <input class="text-input" id="stockSearchInput" name="companies" placeholder="Search company name or symbol" autocomplete="off" style="width:100%;">
+                <div id="watchlistSearchDropdown" class="watchlist-autocomplete" aria-hidden="true"></div>
+            </div>
             <button class="ghost-btn" type="button" onclick="previewStock()">Search</button>
             <button class="primary-btn" type="submit">Add stock</button>
         </div>
@@ -76,6 +121,118 @@
     </div>
 </section>
 <script>
+// ── Watchlist page stock search autocomplete ────────────────────────────
+const wlInput = document.getElementById("stockSearchInput");
+const wlDropdown = document.getElementById("watchlistSearchDropdown");
+let wlSearchItems = [];
+let wlHighlightIdx = -1;
+let wlSearchTimer = null;
+
+wlInput?.addEventListener("input", () => {
+    clearTimeout(wlSearchTimer);
+    const q = wlInput.value.trim();
+    if (!q) {
+        wlDropdown.classList.remove("show");
+        wlSearchItems = [];
+        wlHighlightIdx = -1;
+        return;
+    }
+    wlSearchTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(q)}`);
+            if (!res.ok) return;
+            wlSearchItems = await res.json();
+            if (wlSearchItems.length > 0) {
+                renderWlDropdown(wlSearchItems, -1);
+                wlDropdown.classList.add("show");
+            } else {
+                wlDropdown.classList.remove("show");
+            }
+        } catch (e) { console.error(e); }
+    }, 250);
+});
+
+wlInput?.addEventListener("keydown", (e) => {
+    if (!wlDropdown.classList.contains("show") || wlSearchItems.length === 0) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const q = wlInput.value.trim();
+            if (q) selectWlStock(q);
+        }
+        return;
+    }
+    if (e.key === "ArrowDown") {
+        e.preventDefault();
+        wlHighlightIdx = Math.min(wlHighlightIdx + 1, wlSearchItems.length - 1);
+        renderWlDropdown(wlSearchItems, wlHighlightIdx);
+    } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        wlHighlightIdx = Math.max(wlHighlightIdx - 1, 0);
+        renderWlDropdown(wlSearchItems, wlHighlightIdx);
+    } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (wlHighlightIdx >= 0 && wlHighlightIdx < wlSearchItems.length) {
+            selectWlStock(wlSearchItems[wlHighlightIdx].symbol);
+        } else {
+            const q = wlInput.value.trim();
+            if (q) selectWlStock(q);
+        }
+    } else if (e.key === "Escape") {
+        wlDropdown.classList.remove("show");
+        wlSearchItems = [];
+        wlHighlightIdx = -1;
+    }
+});
+
+function renderWlDropdown(items, highlightIdx) {
+    wlDropdown.innerHTML = items.map((item, idx) => `
+        <div class="autocomplete-item ${idx === highlightIdx ? 'highlighted' : ''}"
+             data-index="${idx}"
+             data-symbol="${item.symbol}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>
+              <strong>${item.name || item.symbol}</strong>
+              <span class="muted" style="font-size:0.82rem; margin-left:8px;">${item.symbol}</span>
+            </span>
+            <span class="badge" style="font-size:0.72rem;">${item.sector || item.exchange || ''}</span>
+          </div>
+        </div>
+    `).join("");
+}
+
+// Event delegation for wlDropdown — click and mouseover
+wlDropdown?.addEventListener("click", (e) => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    const symbol = item.dataset.symbol;
+    if (symbol) selectWlStock(symbol);
+});
+
+wlDropdown?.addEventListener("mouseover", (e) => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    const idx = parseInt(item.dataset.index, 10);
+    if (!isNaN(idx) && idx !== wlHighlightIdx) {
+        wlHighlightIdx = idx;
+        renderWlDropdown(wlSearchItems, wlHighlightIdx);
+    }
+});
+
+document.addEventListener("click", (e) => {
+    if (!wlInput?.contains(e.target) && !wlDropdown?.contains(e.target)) {
+        wlDropdown.classList.remove("show");
+        wlSearchItems = [];
+        wlHighlightIdx = -1;
+    }
+});
+
+function selectWlStock(symbol) {
+    wlDropdown.classList.remove("show");
+    wlSearchItems = [];
+    wlHighlightIdx = -1;
+    wlInput.value = symbol;
+}
+
 async function previewStock() {
     const symbol = document.getElementById("stockSearchInput").value.split(",")[0].trim().toUpperCase();
     const box = document.getElementById("stockPreview");

@@ -104,10 +104,11 @@
         </a>
         <div class="nav-actions">
             {% if current_user.is_authenticated %}
-                <a class="ghost-btn" href="{{ url_for('main.dashboard') }}">Dashboard</a>
-                <a class="ghost-btn" href="{{ url_for('watchlists.index') }}">Watchlists</a>
-                <a class="ghost-btn" href="/top-movers">Top Movers</a>
-                <a class="ghost-btn" href="/alerts">Alerts</a>
+                <a class="ghost-btn" href="/dashboard#overview">Overview</a>
+                <a class="ghost-btn" href="/dashboard#watchlists">Watchlists</a>
+                <a class="ghost-btn" href="/dashboard#search">Search</a>
+                <a class="ghost-btn" href="/dashboard#screener">Screener</a>
+                <a class="ghost-btn" href="/dashboard#alerts">Alerts</a>
                 {% if current_user.is_admin %}
                 <a class="ghost-btn" href="{{ url_for('admin.dashboard') }}">Admin</a>
                 {% endif %}

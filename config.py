@@ -278,8 +278,8 @@ class Config:
     "MSUMI.NS",
     "HONAUT.NS",
     "STARHEALTH.NS",
-    "ITI.NS"
-    "ZFCVINDIA.NS",      
+    "ITI.NS",
+    "ZFCVINDIA.NS",
     "IKS.NS",            
     "AWL.NS",            
     "FORCEMOT.NS",       
@@ -523,7 +523,7 @@ class Config:
     "WAAREERTL.NS",      
     "NAZARA.NS",         
     "NCC.NS",            
-    "STLTECH.NS"         
+    "STLTECH.NS",
 "Zee Entertainment Enterprises Ltd..NS",
 "Jeena Sikho Lifecare Limited.NS",
 "EMBASSY DEVELOPMENTS LIMITED.NS",
@@ -997,7 +997,7 @@ class Config:
 "Elcid Investments Ltd.",
 "Eveready Industries India Ltd.",
 "Prabha Energy Limited",
-"Novartis India Limited"
+"Novartis India Limited",
 "Bliss GVS Pharma Limited",
 "G.M. Breweries Ltd.",
 "TeamLease Services Limited",
@@ -1114,7 +1114,7 @@ class Config:
 "Delta Corp Limited",
 "Indokem Ltd",
 "Som Distilleries & Breweries Ltd.",
-"Disa India Ltd."
+"Disa India Ltd.",
 "Simplex Infrastructures Limited",
 "InfoBeans Technologies Limited",
 "UGRO CAPITAL LIMITED",
@@ -1208,7 +1208,7 @@ class Config:
 "Meghmani Organics Limited",
 "Confidence Petroleum India Limited",
 "Antony Waste Handling Cell Limited",
-"PNB Gilts Ltd."
+"PNB Gilts Ltd.",
 "Shriram Properties Limited",
 "Salasar Techno Engineering Limited",
 "Amir Chand Jagdish Kumar (Exports) Limited",

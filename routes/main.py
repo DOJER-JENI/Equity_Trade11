@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from models import Watchlist, WatchlistItem, db
 from services.live_universe import build_live_universe
 from services.live_market import get_market_status
+from services.search_service import search_stocks
 
 
 main_bp = Blueprint("main", __name__)
@@ -19,7 +20,22 @@ global_df = _load_data()
 
 
 def normalize_name(name: str) -> str:
-    return "".join(str(name).upper().split())
+    # Handle both standard tickers (RELIANCE, TCS) and compact symbols (TAJGVKHOTELS...)
+    raw = str(name).strip().upper()
+    # Remove .NS/.BO suffix if present
+    base = raw.split(".")[0]
+    # If the DataFrame has this exact company, use it
+    if global_df is not None and not global_df.empty and base in global_df["Company"].values:
+        return base
+    # If not found, try to match by removing spaces from DataFrame Company values
+    # (for compact symbols from search_service which stripped spaces)
+    if global_df is not None and not global_df.empty:
+        compact_base = "".join(base.split()).replace("&", "").replace(".", "")
+        for company in global_df["Company"].unique():
+            compact_company = "".join(str(company).upper().split()).replace("&", "").replace(".", "")
+            if compact_company == compact_base:
+                return company
+    return base
 
 
 def display_name(symbol: str) -> str:
@@ -200,11 +216,17 @@ def chart(company):
         "low": latest.get("Low52") or latest.get("Low"),
     }
 
+    # Lookup proper company name from search universe
+    search_results = search_stocks(company_key, limit=1)
+    company_display_name = display_name(company_key)
+    if search_results:
+        company_display_name = search_results[0].get("name", company_display_name)
+
     return render_template(
         "chart.html",
         missing=False,
         company=company_key,
-        company_name=display_name(company_key),
+        company_name=company_display_name,
         current_price=latest.get("Close"),
         prev_close=previous.get("Close"),
         bse_symbol=f"{company_key}.BO",
@@ -336,4 +358,29 @@ def top_movers_page():
 @main_bp.route("/alerts")
 @login_required
 def alerts_page():
-    return render_template("alerts.html")
+    return redirect(url_for("main.dashboard") + "#alerts")
+
+
+@main_bp.route("/api/top-movers-json")
+@login_required
+def top_movers_json():
+    latest = []
+    if not global_df.empty:
+        ranked = global_df.sort_values(["Company", "Date"]).copy()
+        ranked["ChangePct"] = ranked.groupby("Company")["Close"].pct_change().fillna(0) * 100
+        latest_df = ranked.groupby("Company").tail(1).copy()
+        latest = latest_df.to_dict(orient="records")
+
+    gainers = sorted(latest, key=lambda row: float(row.get("ChangePct") or 0), reverse=True)[:5]
+    losers = sorted(latest, key=lambda row: float(row.get("ChangePct") or 0))[:5]
+    
+    return jsonify({
+        "gainers": [
+            {"Company": g["Company"], "ChangePct": g["ChangePct"]}
+            for g in gainers
+        ],
+        "losers": [
+            {"Company": l["Company"], "ChangePct": l["ChangePct"]}
+            for l in losers
+        ]
+    })

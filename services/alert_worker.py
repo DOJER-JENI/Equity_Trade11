@@ -14,7 +14,7 @@ scheduler = None
 
 
 def get_conn():
-    conn = sqlite3.connect("alerts.db", timeout=20, check_same_thread=False)
+    conn = sqlite3.connect("users.db", timeout=20, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -49,7 +49,7 @@ def fire_alert(alert, matches, conn):
 
     conn.execute(
         """
-        INSERT INTO notifications (user_id, alert_id, message, payload, is_read, created_at)
+        INSERT INTO notification (user_id, alert_id, message, payload, is_read, created_at)
         VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
         """,
         (
@@ -62,7 +62,7 @@ def fire_alert(alert, matches, conn):
 
     conn.execute(
         """
-        UPDATE alerts
+        UPDATE alert
         SET last_triggered_at = ?, trigger_count = COALESCE(trigger_count, 0) + 1
         WHERE id = ?
         """,
@@ -75,7 +75,7 @@ def evaluate_alerts():
 
     conn = get_conn()
     alerts = conn.execute(
-        "SELECT * FROM alerts WHERE status = 'active'"
+        "SELECT * FROM alert WHERE status = 'active'"
     ).fetchall()
 
     for alert in alerts:

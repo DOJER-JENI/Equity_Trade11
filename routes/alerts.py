@@ -12,7 +12,7 @@ alerts_bp = Blueprint("alerts", __name__, url_prefix="/api")
 
 
 def get_conn():
-    conn = sqlite3.connect("alerts.db", timeout=20, check_same_thread=False)
+    conn = sqlite3.connect("users.db", timeout=20, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -70,7 +70,7 @@ def create_alert():
     cur = conn.cursor()
     duplicate = cur.execute(
         """
-        SELECT id FROM alerts
+        SELECT id FROM alert
         WHERE user_id = ? AND COALESCE(ticker, '') = COALESCE(?, '')
           AND condition_summary = ? AND status = 'active'
         """,
@@ -82,7 +82,7 @@ def create_alert():
 
     cur.execute(
         """
-        INSERT INTO alerts (
+        INSERT INTO alert (
             user_id, name, ticker, condition_json, condition_summary,
             note, notify_email, notify_sms, notify_whatsapp, notify_inapp, cooldown_minutes, status
         )
@@ -104,7 +104,7 @@ def create_alert():
     )
     conn.commit()
     alert_id = cur.lastrowid
-    alert = conn.execute("SELECT * FROM alerts WHERE id = ?", (alert_id,)).fetchone()
+    alert = conn.execute("SELECT * FROM alert WHERE id = ?", (alert_id,)).fetchone()
     conn.close()
 
     return jsonify({"message": "Alert created", "alert": dict(alert)}), 201
@@ -114,11 +114,11 @@ def create_alert():
 @login_required
 def list_alerts():
     ticker = request.args.get("ticker")
-    status = request.args.get("status", "active")
+    status = request.args.get("status", "")
 
     conn = get_conn()
 
-    sql = "SELECT * FROM alerts WHERE user_id = ?"
+    sql = "SELECT * FROM alert WHERE user_id = ?"
     params = [current_user.id]
 
     if status:
@@ -145,7 +145,7 @@ def update_alert(alert_id):
 
     conn = get_conn()
     alert = conn.execute(
-        "SELECT * FROM alerts WHERE id = ? AND user_id = ?",
+        "SELECT * FROM alert WHERE id = ? AND user_id = ?",
         (alert_id, current_user.id),
     ).fetchone()
 
@@ -154,11 +154,11 @@ def update_alert(alert_id):
         return jsonify({"error": "Alert not found"}), 404
 
     if action == "pause":
-        conn.execute("UPDATE alerts SET status = 'paused' WHERE id = ?", (alert_id,))
+        conn.execute("UPDATE alert SET status = 'paused' WHERE id = ?", (alert_id,))
     elif action == "resume":
-        conn.execute("UPDATE alerts SET status = 'active' WHERE id = ?", (alert_id,))
+        conn.execute("UPDATE alert SET status = 'active' WHERE id = ?", (alert_id,))
     elif action == "delete":
-        conn.execute("DELETE FROM alerts WHERE id = ?", (alert_id,))
+        conn.execute("DELETE FROM alert WHERE id = ?", (alert_id,))
     else:
         conn.close()
         return jsonify({"error": "Unsupported action"}), 400
@@ -176,8 +176,8 @@ def get_notifications():
     conn = get_conn()
     sql = """
         SELECT n.*, a.name AS alert_name
-        FROM notifications n
-        LEFT JOIN alerts a ON a.id = n.alert_id
+        FROM notification n
+        LEFT JOIN alert a ON a.id = n.alert_id
         WHERE n.user_id = ?
     """
     params = [current_user.id]
@@ -198,7 +198,7 @@ def get_notifications():
 def unread_count():
     conn = get_conn()
     row = conn.execute(
-        "SELECT COUNT(*) AS unread_count FROM notifications WHERE user_id = ? AND is_read = 0",
+        "SELECT COUNT(*) AS unread_count FROM notification WHERE user_id = ? AND is_read = 0",
         (current_user.id,),
     ).fetchone()
     conn.close()
@@ -210,7 +210,7 @@ def unread_count():
 def mark_notification_read(notification_id):
     conn = get_conn()
     conn.execute(
-        "UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?",
+        "UPDATE notification SET is_read = 1 WHERE id = ? AND user_id = ?",
         (notification_id, current_user.id),
     )
     conn.commit()
@@ -222,7 +222,7 @@ def mark_notification_read(notification_id):
 @login_required
 def clear_notifications():
     conn = get_conn()
-    conn.execute("DELETE FROM notifications WHERE user_id = ?", (current_user.id,))
+    conn.execute("DELETE FROM notification WHERE user_id = ?", (current_user.id,))
     conn.commit()
     conn.close()
     return jsonify({"message": "All notifications cleared"})

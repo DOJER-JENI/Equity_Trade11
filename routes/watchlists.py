@@ -4,6 +4,7 @@ from flask_login import current_user, login_required
 from models import Watchlist, WatchlistItem, db
 from routes.main import get_company_choices, latest_rows_for_companies, normalize_name
 from services.stock_lookup import lookup_stock, to_app_company
+from services.search_service import find_symbol, search_stocks
 
 
 watchlists_bp = Blueprint("watchlists", __name__, url_prefix="/watchlists")
@@ -109,12 +110,17 @@ def add_company(watchlist_id):
     names = []
     for raw_company in [x.strip().upper() for x in raw_companies.split(",") if x.strip()]:
         try:
-            lookup_stock(raw_company)
-            names.append(to_app_company(raw_company))
-        except ValueError:
-            flash(f"{raw_company} skipped. Use only .NS or .BO symbols.", "error")
+            # Use search service to resolve company name/symbol to normalized symbol
+            resolved = find_symbol(raw_company)
+            if resolved:
+                company_name = resolved
+            else:
+                # Fall back to stock lookup which required .NS/.BO
+                lookup_stock(raw_company)
+                company_name = to_app_company(raw_company)
+            names.append(company_name)
         except Exception:
-            flash(f"{raw_company} could not be fetched right now.", "error")
+            flash(f"{raw_company} could not be resolved right now.", "error")
 
     existing = {item.company for item in watchlist.items}
 
@@ -186,3 +192,113 @@ def watchlist_companies_api(watchlist_id):
             "companies": [item.company for item in watchlist.items],
         }
     )
+
+
+@watchlists_bp.route("/api/list", methods=["GET"])
+@login_required
+def api_list_watchlists():
+    watchlists = Watchlist.query.filter_by(user_id=current_user.id).order_by(Watchlist.created_at.desc()).all()
+    return jsonify([{
+        "id": w.id,
+        "name": w.name,
+        "is_default": w.is_default,
+        "item_count": len(w.items)
+    } for w in watchlists])
+
+
+@watchlists_bp.route("/api/create", methods=["POST"])
+@login_required
+def api_create_watchlist():
+    data = request.get_json() or {}
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "Watchlist name is required"}), 400
+        
+    duplicate = Watchlist.query.filter(
+        Watchlist.user_id == current_user.id,
+        db.func.lower(Watchlist.name) == name.lower()
+    ).first()
+    if duplicate:
+        return jsonify({"error": "A watchlist with this name already exists."}), 400
+        
+    watchlist = Watchlist(user_id=current_user.id, name=name)
+    db.session.add(watchlist)
+    db.session.commit()
+    return jsonify({"message": "Watchlist created successfully", "watchlist_id": watchlist.id})
+
+
+@watchlists_bp.route("/api/<int:watchlist_id>", methods=["GET"])
+@login_required
+def api_get_watchlist(watchlist_id):
+    watchlist = Watchlist.query.filter_by(id=watchlist_id, user_id=current_user.id).first_or_404()
+    companies = [item.company for item in watchlist.items]
+    rows = latest_rows_for_companies(companies)
+    
+    items_data = []
+    for item in watchlist.items:
+        matching_row = next((r for r in rows if r["Company"] == item.company), None)
+        # Resolve proper company name from search universe
+        resolved_results = search_stocks(item.company, limit=1)
+        company_display_name = item.company
+        if resolved_results:
+            company_display_name = resolved_results[0].get("name", item.company)
+        items_data.append({
+            "id": item.id,
+            "company": item.company,
+            "company_name": company_display_name,
+            "price": matching_row.get("Close") if matching_row else None,
+            "rsi": matching_row.get("RSI") if matching_row else None,
+            "change_pct": matching_row.get("ChangePct") if matching_row else 0
+        })
+        
+    return jsonify({
+        "id": watchlist.id,
+        "name": watchlist.name,
+        "is_default": watchlist.is_default,
+        "items": items_data
+    })
+
+
+@watchlists_bp.route("/api/<int:watchlist_id>/add", methods=["POST"])
+@login_required
+def api_add_company(watchlist_id):
+    watchlist = Watchlist.query.filter_by(id=watchlist_id, user_id=current_user.id).first_or_404()
+    data = request.get_json() or {}
+    company_symbol = data.get("symbol", "").strip().upper()
+    if not company_symbol:
+        return jsonify({"error": "Symbol is required"}), 400
+        
+    # Resolve via search_service first (handles company names, partial symbols)
+    resolved = find_symbol(company_symbol)
+    if not resolved:
+        resolved = company_symbol
+    company_name = resolved
+        
+    existing = WatchlistItem.query.filter_by(watchlist_id=watchlist.id, company=company_name).first()
+    if existing:
+        return jsonify({"error": "Stock already in this watchlist"}), 400
+        
+    item = WatchlistItem(watchlist_id=watchlist.id, company=company_name)
+    db.session.add(item)
+    db.session.commit()
+    return jsonify({"message": f"{company_name} added to watchlist"})
+
+
+@watchlists_bp.route("/api/<int:watchlist_id>/remove/<int:item_id>", methods=["POST"])
+@login_required
+def api_remove_company(watchlist_id, item_id):
+    watchlist = Watchlist.query.filter_by(id=watchlist_id, user_id=current_user.id).first_or_404()
+    item = WatchlistItem.query.filter_by(id=item_id, watchlist_id=watchlist.id).first_or_404()
+    
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({"message": "Stock removed from watchlist"})
+
+
+@watchlists_bp.route("/api/<int:watchlist_id>/delete", methods=["POST"])
+@login_required
+def api_delete_watchlist(watchlist_id):
+    watchlist = Watchlist.query.filter_by(id=watchlist_id, user_id=current_user.id).first_or_404()
+    db.session.delete(watchlist)
+    db.session.commit()
+    return jsonify({"message": "Watchlist deleted successfully"})

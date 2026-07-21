@@ -5,10 +5,18 @@
     <h1 class="page-title">Admin Dashboard</h1>
 
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; margin:20px 0;">
-        <div class="panel section" style="padding:18px;"><strong>Users</strong><div>{{ stats.users }}</div></div>
-        <div class="panel section" style="padding:18px;"><strong>Alerts</strong><div>{{ stats.alerts }}</div></div>
-        <div class="panel section" style="padding:18px;"><strong>Notifications</strong><div>{{ stats.notifications }}</div></div>
-        <div class="panel section" style="padding:18px;"><strong>Active Alerts</strong><div>{{ stats.active_alerts }}</div></div>
+        <div class="panel section" style="padding:18px;"><strong>Users</strong>
+            <div>{{ stats.users }}</div>
+        </div>
+        <div class="panel section" style="padding:18px;"><strong>Alerts</strong>
+            <div>{{ stats.alerts }}</div>
+        </div>
+        <div class="panel section" style="padding:18px;"><strong>Notifications</strong>
+            <div>{{ stats.notifications }}</div>
+        </div>
+        <div class="panel section" style="padding:18px;"><strong>Active Alerts</strong>
+            <div>{{ stats.active_alerts }}</div>
+        </div>
     </div>
 
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">

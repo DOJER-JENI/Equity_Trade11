@@ -89,6 +89,14 @@ def init_schema_upgrades():
         cur.execute("ALTER TABLE user_profile ADD COLUMN whatsapp_number VARCHAR(30)")
     if "profile_photo_url" not in profile_columns:
         cur.execute("ALTER TABLE user_profile ADD COLUMN profile_photo_url TEXT")
+    if "two_factor_enabled" not in profile_columns:
+        cur.execute("ALTER TABLE user_profile ADD COLUMN two_factor_enabled BOOLEAN DEFAULT 0")
+
+    cur.execute("PRAGMA table_info(alert)")
+    alert_columns = {row[1] for row in cur.fetchall()}
+    if "notify_whatsapp" not in alert_columns:
+        cur.execute("ALTER TABLE alert ADD COLUMN notify_whatsapp BOOLEAN DEFAULT 0")
+
     cur.execute("PRAGMA table_info(cached_stock)")
     conn.commit()
     conn.close()

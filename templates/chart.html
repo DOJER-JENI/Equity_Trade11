@@ -312,6 +312,44 @@
         margin-top: 14px;
         color: #334155;
     }
+    /* autocomplete for stock search */
+    .rich-search-shell {
+        position: relative;
+    }
+    .stock-autocomplete {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        width: 100%;
+        background: #fff;
+        border: 1px solid #d9e2ef;
+        border-radius: 8px;
+        box-shadow: 0 10px 28px rgba(15,23,42,.08);
+        z-index: 99;
+        max-height: 260px;
+        overflow-y: auto;
+        display: none;
+    }
+    .stock-autocomplete.show {
+        display: block;
+    }
+    .autocomplete-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        font-weight: 600;
+        border-bottom: 1px solid #e6ebf7;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    .autocomplete-item:hover,
+    .autocomplete-item.highlighted {
+        background: #f1f5f9;
+    }
+    .autocomplete-item.highlighted {
+        background: #eaf1ff;
+        border-left: 3px solid #2563eb;
+    }
     @media (max-width: 800px) {
         .segmented { width: 100%; overflow-x: auto; }
         .segmented button { min-width: 62px; padding: 11px 13px; }
@@ -343,7 +381,7 @@
     <section class="stack">
         <div class="company-top">
             <div>
-                <h1 class="company-title">{{ company_name }} Ltd</h1>
+                <h1 class="company-title">{{ company_name }}</h1>
                 <div class="company-links">
                     <span><i class="fa-solid fa-link"></i> {{ company|lower }}.com</span>
                     <span><i class="fa-solid fa-arrow-up-right-from-square"></i> BSE: {{ company }}.BO</span>
@@ -387,8 +425,11 @@
 
     <section class="panel section">
         <h2 style="margin-top:0;">Stock Search</h2>
-        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-            <input class="text-input" id="chartCompanyInput" placeholder="TCS.NS or RELIANCE.BO" style="max-width:360px;">
+        <div class="rich-search-shell" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+            <div style="position:relative; flex:1; min-width:200px; max-width:360px;">
+                <input class="text-input" id="chartCompanyInput" placeholder="Search company name or symbol" autocomplete="off" style="width:100%;">
+                <div id="chartSearchDropdown" class="stock-autocomplete" aria-hidden="true"></div>
+            </div>
             <button class="primary-btn" type="button" onclick="loadCompanyChart()">Search</button>
         </div>
         <div id="companyHistory" style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;"></div>
@@ -480,7 +521,7 @@
 <div id="alertModal" class="alert-backdrop">
     <div class="alert-dialog" role="dialog" aria-modal="true" aria-labelledby="alertModalTitle">
         <div class="alert-header">
-            <h2 id="alertModalTitle">Alerts for {{ company_name }} Ltd</h2>
+            <h2 id="alertModalTitle">Alerts for {{ company_name }}</h2>
             <button class="alert-close" type="button" onclick="closeAlertModal()" aria-label="Close alerts">X</button>
         </div>
 
@@ -1085,46 +1126,132 @@ async function loadLiveQuote() {
     }
 }
 
+// ── Chart page stock search with autocomplete ──────────────────────────
+const chartInput = document.getElementById("chartCompanyInput");
+const chartDropdown = document.getElementById("chartSearchDropdown");
+let chartSearchItems = [];
+let chartHighlightIdx = -1;
+let chartSearchTimer = null;
+
+chartInput?.addEventListener("input", () => {
+    clearTimeout(chartSearchTimer);
+    const q = chartInput.value.trim();
+    if (!q) {
+        chartDropdown.classList.remove("show");
+        chartSearchItems = [];
+        chartHighlightIdx = -1;
+        return;
+    }
+    chartSearchTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(q)}`);
+            if (!res.ok) return;
+            chartSearchItems = await res.json();
+            if (chartSearchItems.length > 0) {
+                renderChartDropdown(chartSearchItems, -1);
+                chartDropdown.classList.add("show");
+            } else {
+                chartDropdown.classList.remove("show");
+            }
+        } catch (e) { console.error(e); }
+    }, 250);
+});
+
+chartInput?.addEventListener("keydown", (e) => {
+    if (!chartDropdown.classList.contains("show") || chartSearchItems.length === 0) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const q = chartInput.value.trim();
+            if (q) selectChartStock(q);
+        }
+        return;
+    }
+    if (e.key === "ArrowDown") {
+        e.preventDefault();
+        chartHighlightIdx = Math.min(chartHighlightIdx + 1, chartSearchItems.length - 1);
+        renderChartDropdown(chartSearchItems, chartHighlightIdx);
+    } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        chartHighlightIdx = Math.max(chartHighlightIdx - 1, 0);
+        renderChartDropdown(chartSearchItems, chartHighlightIdx);
+    } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (chartHighlightIdx >= 0 && chartHighlightIdx < chartSearchItems.length) {
+            selectChartStock(chartSearchItems[chartHighlightIdx].symbol);
+        } else {
+            const q = chartInput.value.trim();
+            if (q) selectChartStock(q);
+        }
+    } else if (e.key === "Escape") {
+        chartDropdown.classList.remove("show");
+        chartSearchItems = [];
+        chartHighlightIdx = -1;
+    }
+});
+
+function renderChartDropdown(items, highlightIdx) {
+    chartDropdown.innerHTML = items.map((item, idx) => `
+        <div class="autocomplete-item ${idx === highlightIdx ? 'highlighted' : ''}"
+             data-index="${idx}"
+             data-symbol="${item.symbol}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>
+              <strong>${item.name || item.symbol}</strong>
+              <span class="muted" style="font-size:0.82rem; margin-left:8px;">${item.symbol}</span>
+            </span>
+            <span class="badge" style="font-size:0.72rem;">${item.sector || item.exchange || ''}</span>
+          </div>
+        </div>
+    `).join("");
+}
+
+// Event delegation for chartSearchDropdown — click and mouseover
+chartDropdown?.addEventListener("click", (e) => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    const symbol = item.dataset.symbol;
+    if (symbol) selectChartStock(symbol);
+});
+
+chartDropdown?.addEventListener("mouseover", (e) => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    const idx = parseInt(item.dataset.index, 10);
+    if (!isNaN(idx) && idx !== chartHighlightIdx) {
+        chartHighlightIdx = idx;
+        renderChartDropdown(chartSearchItems, chartHighlightIdx);
+    }
+});
+
+document.addEventListener("click", (e) => {
+    if (!chartInput?.contains(e.target) && !chartDropdown?.contains(e.target)) {
+        chartDropdown.classList.remove("show");
+        chartSearchItems = [];
+        chartHighlightIdx = -1;
+    }
+});
+
+function selectChartStock(symbol) {
+    chartDropdown.classList.remove("show");
+    chartSearchItems = [];
+    chartHighlightIdx = -1;
+    chartInput.value = symbol;
+    window.location.href = "/chart/" + encodeURIComponent(symbol);
+}
+
 function loadCompanyChart() {
-    let raw = document.getElementById("chartCompanyInput").value.trim().toUpperCase();
+    let raw = chartInput.value.trim().toUpperCase();
     if (!raw) return;
 
     const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
-    const looksLikeTicker = parts.every(p => p.endsWith('.NS') || p.endsWith('.BO'));
-    if (!looksLikeTicker) {
-        const keyword = raw.replace(/[^A-Z]/g, '');
-        let mapped = [];
-        if (keyword.includes('TATA')) {
-            mapped = ['TATASTEEL.NS','TATAMOTORS.NS','TCS.NS'];
-        }
-        if (!mapped.length) {
-            alert('Enter tickers like TCS.NS or RELIANCE.BO (comma-separated).');
-            return;
-        }
-        document.getElementById("chartCompanyInput").value = mapped.join(', ');
-        raw = document.getElementById("chartCompanyInput").value.trim().toUpperCase();
-    }
+    const first = parts[0] || raw;
 
-    const symbols = raw.split(',').map(s => s.trim()).filter(Boolean);
-    if (!symbols.length) return;
-
-    const first = symbols[0];
+    // Save to localStorage history
     const history = JSON.parse(localStorage.getItem("companies") || "[]");
-
-    symbols.forEach(sym => {
-        if ((sym.endsWith('.NS') || sym.endsWith('.BO')) && !history.includes(sym)) {
-            history.push(sym);
-        }
-    });
+    if (first && !history.includes(first)) history.push(first);
     localStorage.setItem("companies", JSON.stringify(history));
 
-    if (!first.endsWith(".NS") && !first.endsWith(".BO")) {
-        alert("Use only NSE/BSE symbols ending with .NS or .BO");
-        return;
-    }
-
-    const base = first.split(".")[0];
-    window.location.href = "/chart/" + base;
+    window.location.href = "/chart/" + encodeURIComponent(first);
 }
 
 function removeStoredCompany(symbol) {

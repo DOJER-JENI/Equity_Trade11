@@ -1,270 +1,691 @@
 {% extends "layout.html" %}
+
 {% block head %}
 <style>
-    .profile-shell { display:grid; gap:16px; }
-    .profile-hero { display:flex; justify-content:space-between; gap:24px; align-items:center; flex-wrap:wrap; }
-    .profile-identity { display:flex; align-items:center; gap:20px; min-width:260px; }
-    .profile-avatar-xl { width:92px; height:92px; border-radius:50%; display:grid; place-items:center; background:#0f172a; color:#fff; font-size:2.4rem; font-weight:800; overflow:hidden; }
-    .profile-avatar-xl img { width:100%; height:100%; object-fit:cover; }
-    .member-card { padding:16px 18px; background:var(--panel-soft); border:1px solid var(--line); border-radius:8px; min-width:170px; }
-    .profile-grid { display:grid; grid-template-columns:260px minmax(0,1fr); gap:16px; align-items:start; }
-    .profile-sidebar { position:sticky; top:92px; padding:10px; display:grid; gap:4px; }
-    .profile-nav-item { width:100%; border:0; background:transparent; color:var(--text); border-radius:8px; padding:12px 14px; cursor:pointer; display:flex; gap:10px; align-items:center; font-weight:700; text-align:left; }
-    .profile-nav-item:hover,.profile-nav-item.is-active { background:var(--primary-soft); color:var(--primary); }
-    .profile-content { display:none; }
-    .profile-content.is-active { display:grid; gap:16px; }
-    .profile-card-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:14px; }
-    .mini-card { padding:18px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
-    .mini-card strong { display:block; font-size:1.7rem; margin-top:8px; }
-    .row-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .inline-form { display:inline-flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .status-pill { display:inline-flex; border-radius:999px; padding:6px 10px; font-size:.8rem; font-weight:800; background:var(--panel-soft); color:var(--muted); }
-    .status-pill.active { background:color-mix(in srgb, var(--success) 14%, var(--panel)); color:var(--success); }
-    .settings-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; }
-    .security-row { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:16px 0; border-bottom:1px solid var(--line); }
-    .security-row:last-child { border-bottom:0; }
-    .switch { position:relative; width:48px; height:28px; flex:0 0 auto; }
-    .switch input { position:absolute; opacity:0; }
-    .switch span { position:absolute; inset:0; border-radius:999px; background:var(--line); cursor:pointer; transition:background-color .2s ease; }
-    .switch span::after { content:""; position:absolute; width:22px; height:22px; left:3px; top:3px; border-radius:50%; background:#fff; transition:transform .2s ease; box-shadow:0 4px 12px rgba(0,0,0,.18); }
-    .switch input:checked + span { background:var(--primary-strong); }
-    .switch input:checked + span::after { transform:translateX(20px); }
-    @media (max-width:920px) {
-        .profile-grid { grid-template-columns:1fr; }
-        .profile-sidebar { position:static; grid-template-columns:repeat(2, minmax(0,1fr)); }
-        .settings-grid { grid-template-columns:1fr; }
-    }
-    @media (max-width:560px) {
-        .profile-sidebar { grid-template-columns:1fr; }
-        .profile-identity { align-items:flex-start; }
-    }
+  /* Profile Layout */
+  .profile-shell {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  .profile-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    height: fit-content;
+  }
+  .profile-nav-item {
+    padding: 12px 16px;
+    border-radius: 6px;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+  .profile-nav-item:hover, .profile-nav-item.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+  .profile-nav-item.danger {
+    color: var(--danger);
+  }
+  .profile-nav-item.danger:hover {
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+  
+  /* Sections styling */
+  .profile-section {
+    display: none;
+  }
+  .profile-section.active {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  /* Profile Hero Header */
+  .profile-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+  .profile-identity {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .profile-meta {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+  }
+  .profile-meta span {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .profile-meta b {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-top: 4px;
+  }
+
+  /* Cards */
+  .profile-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+  .profile-card h2 {
+    margin-top: 0;
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 16px;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  
+  .management-list, .preference-list, .session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  /* Settings form styling */
+  .settings-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .settings-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .settings-form input {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--input);
+    color: var(--text);
+  }
+  .form-actions {
+    grid-column: span 2;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+  .form-actions button {
+    background: var(--primary-strong);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 0;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Preference Matrix */
+  .preference-matrix {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+  .preference-matrix-header {
+    font-weight: 800;
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--line);
+    padding-bottom: 8px;
+    text-align: center;
+  }
+  .preference-matrix-header:first-child {
+    text-align: left;
+  }
+  .preference-matrix-row {
+    display: contents;
+  }
+  .preference-matrix-cell {
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+  .preference-matrix-cell:first-child {
+    text-align: left;
+    font-weight: 700;
+  }
+
+  /* Verification grid */
+  .verification-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .verification-card {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .verification-status.verified {
+    color: var(--success);
+    font-weight: 800;
+  }
+  .verification-status.unverified {
+    color: var(--danger);
+    font-weight: 800;
+  }
+
+  /* Switches */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+  }
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .switch i {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--line);
+    transition: .4s;
+    border-radius: 28px;
+  }
+  .switch i:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  .switch input:checked + i {
+    background-color: var(--primary-strong);
+  }
+  .switch input:checked + i:before {
+    transform: translateX(22px);
+  }
+
+  /* Layout helper */
+  .section-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .section-title-row h2 {
+    margin: 0;
+  }
+  .saved-screen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+  }
+  .saved-screen-grid div {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .saved-screen-grid b {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 1.1rem;
+  }
+  .saved-screen-grid span {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
 </style>
 {% endblock %}
+
 {% block content %}
-{% set display_name = profile.full_name if profile and profile.full_name else current_user.username %}
-{% set member_since = current_user.created_at.strftime("%d %b %Y") if current_user.created_at else "Not available" %}
-<section class="profile-shell">
-    <section class="panel section profile-hero">
-        <div class="profile-identity">
-            <div class="profile-avatar-xl">
-                {% if profile and profile.profile_photo_url %}
-                <img src="{{ profile.profile_photo_url }}" alt="">
-                {% else %}
-                {{ current_user.username[:1]|upper }}
-                {% endif %}
-            </div>
-            <div>
-                <div class="badge">Account Workspace</div>
-                <h1 class="page-title" style="margin-top:10px;">{{ display_name }}</h1>
-                <p class="page-subtitle">{{ current_user.email }}</p>
-            </div>
+<section class="page profile-page" data-user="{{ current_user.id }}">
+
+  <header class="profile-hero">
+    <div class="profile-identity">
+      <span id="profileHeroAvatar" class="avatar avatar-xl">U</span>
+      <div>
+        <p class="eyebrow" style="margin:0 0 4px; text-transform:uppercase; font-size:0.8rem; font-weight:800; color:var(--muted)">Account workspace</p>
+        <h1 id="profileHeroName" style="margin:0;">My Profile</h1>
+        <p id="profileHeroEmail" class="muted" style="margin:4px 0 0;">Loading account...</p>
+      </div>
+    </div>
+    <div class="profile-meta">
+      <span>Member Since</span>
+      <b id="profileMemberSince">--</b>
+    </div>
+  </header>
+
+  <div class="profile-shell">
+    <aside class="profile-sidebar" aria-label="Profile sections">
+      <button class="profile-nav-item active" data-profile-section="dashboard" type="button">Dashboard</button>
+      <button class="profile-nav-item" data-profile-section="watchlists" type="button">My Watchlists</button>
+      <button class="profile-nav-item" data-profile-section="alerts" type="button">Alerts</button>
+      <button class="profile-nav-item" data-profile-section="saved" type="button">Saved Screens</button>
+      <button class="profile-nav-item" data-profile-section="settings" type="button">Account Settings</button>
+      <button class="profile-nav-item" data-profile-section="notifications" type="button">Notifications</button>
+      <button class="profile-nav-item" data-profile-section="security" type="button">Security</button>
+      <a class="profile-nav-item danger" href="{{ url_for('auth.logout') }}">Logout</a>
+    </aside>
+
+    <section class="profile-content" aria-live="polite">
+      <div id="profileDashboard" class="profile-section active">
+        <div class="profile-grid stats-grid">
+          <article class="profile-card"><span>Watchlists</span><b id="profileWatchCount">--</b></article>
+          <article class="profile-card"><span>Saved Stocks</span><b id="profileStockCount">--</b></article>
+          <article class="profile-card"><span>Active Alerts</span><b id="profileAlertCount">--</b></article>
         </div>
-        <div class="member-card">
-            <div class="muted" style="font-size:.82rem; font-weight:800;">Member Since</div>
-            <strong>{{ member_since }}</strong>
-        </div>
+        <article class="profile-card">
+          <h2>Recent Searches</h2>
+          <div id="profileHistory" class="profile-list"></div>
+        </article>
+      </div>
+
+      <div id="profileWatchlists" class="profile-section">
+        <article class="profile-card">
+          <div class="section-title-row">
+            <div><h2>My Watchlists</h2><p class="muted">Review and manage your saved market lists.</p></div>
+            <a class="soft-action" href="/dashboard#watchlists">Create New</a>
+          </div>
+          <div id="profileWatchlistRows" class="management-list"></div>
+        </article>
+      </div>
+
+      <div id="profileAlerts" class="profile-section">
+        <article class="profile-card">
+          <div class="section-title-row">
+            <div><h2>Alerts</h2><p class="muted">Edit delivery rules and pause signals without deleting them.</p></div>
+            <a class="soft-action" href="/dashboard#alerts">New Alert</a>
+          </div>
+          <div id="profileAlertRows" class="management-list"></div>
+        </article>
+      </div>
+
+      <div id="profileSaved" class="profile-section">
+        <article class="profile-card">
+          <h2>Saved Screens</h2>
+          <div class="saved-screen-grid">
+            <div><b>Quality Compounders</b><span>ROCE, sales growth, debt filters</span></div>
+            <div><b>Value Opportunities</b><span>P/E, dividend yield, 52-week range</span></div>
+            <div><b>Momentum Watch</b><span>RSI, price strength, recent volume</span></div>
+          </div>
+        </article>
+      </div>
+
+      <div id="profileSettings" class="profile-section">
+        <article class="profile-card">
+          <h2>Account Settings</h2>
+          <form id="profileSettingsForm" class="settings-form">
+            <label>Change Name<input id="settingsName" type="text" required></label>
+            <label>Change Email<input id="settingsEmail" type="email" required></label>
+            <div class="form-actions"><button type="submit">Save Changes</button></div>
+          </form>
+        </article>
+        <article class="profile-card">
+          <h2>Change Password</h2>
+          <form id="profilePasswordForm" class="settings-form">
+            <label>Current Password<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+            <label>New Password<input id="newPassword" type="password" autocomplete="new-password" minlength="6" required></label>
+            <div class="form-actions"><button type="submit">Update Password</button></div>
+          </form>
+        </article>
+      </div>
+
+      <div id="profileNotifications" class="profile-section">
+        <article class="profile-card">
+          <div class="section-title-row">
+            <div><h2>Contact Verification</h2><p class="muted">Only verified channels receive alerts and notifications.</p></div>
+            <button id="requestPushPermission" class="soft-action" type="button" onclick="alert('Browser Push Notifications permission requested.')">Browser Push</button>
+          </div>
+          <div id="contactVerificationCards" class="verification-grid"></div>
+        </article>
+        <article class="profile-card">
+          <h2>Communication Preferences</h2>
+          <div id="channelPreferenceMatrix" class="preference-matrix"></div>
+        </article>
+        <article class="profile-card">
+          <h2>Notification Settings</h2>
+          <div id="notificationPreferenceRows" class="preference-list">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+              <span>Daily Market Digests</span>
+              <label class="switch"><input type="checkbox" checked disabled><i></i></label>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+              <span>Immediate Breaking Alerts</span>
+              <label class="switch"><input type="checkbox" checked disabled><i></i></label>
+            </div>
+          </div>
+        </article>
+        <article class="profile-card">
+          <h2>Notification History</h2>
+          <div id="notificationHistoryRows" class="management-list"></div>
+        </article>
+      </div>
+
+      <div id="profileSecurity" class="profile-section">
+        <article class="profile-card">
+          <div class="security-row">
+            <div><h2>Two-factor authentication</h2><p class="muted">Add an extra confirmation step to future sign-ins.</p></div>
+            <label class="switch security-switch"><input id="twoFactorToggle" type="checkbox"><i></i></label>
+          </div>
+        </article>
+        <article class="profile-card">
+          <div class="section-title-row">
+            <div><h2>Active Login Sessions</h2><p class="muted">Current browser sessions associated with this account.</p></div>
+            <button id="logoutAllDevices" class="danger-action ghost-btn" type="button" style="color:var(--danger)">Logout from all devices</button>
+          </div>
+          <div class="session-list">
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line);"><b>Current session</b><span>Windows desktop - active now</span></div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0;"><b>Remembered login</b><span>Last verified with your saved credentials</span></div>
+          </div>
+        </article>
+      </div>
     </section>
-
-    <section class="profile-grid">
-        <aside class="panel profile-sidebar" aria-label="Profile sections">
-            <button class="profile-nav-item" data-section="dashboard" type="button"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
-            <button class="profile-nav-item" data-section="watchlists" type="button"><i class="fa-solid fa-list"></i> My Watchlists</button>
-            <button class="profile-nav-item" data-section="alerts" type="button"><i class="fa-regular fa-bell"></i> Alerts</button>
-            <button class="profile-nav-item" data-section="screens" type="button"><i class="fa-solid fa-filter"></i> Saved Screens</button>
-            <button class="profile-nav-item" data-section="account" type="button"><i class="fa-solid fa-gear"></i> Account Settings</button>
-            <button class="profile-nav-item" data-section="security" type="button"><i class="fa-solid fa-shield-halved"></i> Security</button>
-            <a class="profile-nav-item" href="{{ url_for('auth.logout') }}"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</a>
-        </aside>
-
-        <main class="stack">
-            <section class="profile-content" data-content="dashboard">
-                <div class="profile-card-grid">
-                    <div class="mini-card"><span class="muted">Watchlists</span><strong>{{ stats.watchlists }}</strong></div>
-                    <div class="mini-card"><span class="muted">Saved Stocks</span><strong>{{ stats.tracked_stocks }}</strong></div>
-                    <div class="mini-card"><span class="muted">Active Alerts</span><strong>{{ stats.alerts }}</strong></div>
-                    <div class="mini-card"><span class="muted">Saved Screens</span><strong>{{ stats.saved_screens }}</strong></div>
-                </div>
-                <section class="panel section">
-                    <h3 style="margin-top:0;">Recent Searches</h3>
-                    <div class="table-wrap">
-                        <table>
-                            <tbody>
-                                {% for item in history %}
-                                <tr><td><strong>{{ item.company }}</strong></td><td class="muted">{{ item.searched_at.strftime("%d %b %Y") if item.searched_at else "-" }}</td></tr>
-                                {% else %}
-                                <tr><td class="muted">No recent searches yet.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            </section>
-
-            <section class="profile-content" data-content="watchlists">
-                <section class="panel section">
-                    <h2 style="margin-top:0;">My Watchlists</h2>
-                    <div class="table-wrap">
-                        <table>
-                            <thead><tr><th>Name</th><th>Stock Count</th><th>Created</th><th>Actions</th></tr></thead>
-                            <tbody>
-                                {% for watchlist in watchlists %}
-                                <tr>
-                                    <td><strong>{{ watchlist.name }}</strong>{% if watchlist.is_default %} <span class="status-pill active">Default</span>{% endif %}</td>
-                                    <td>{{ watchlist.items|length }}</td>
-                                    <td>{{ watchlist.created_at.strftime("%d %b %Y") if watchlist.created_at else "-" }}</td>
-                                    <td class="row-actions">
-                                        <a class="ghost-btn" href="{{ url_for('watchlists.detail', watchlist_id=watchlist.id) }}">Open</a>
-                                        <form class="inline-form" method="post"action="{{ url_for('watchlists.rename', watchlist_id=watchlist.id) }}">
-                                            <input class="text-input" name="name" value="{{ watchlist.name }}" style="max-width:170px;" aria-label="Rename watchlist">
-                                            <button class="ghost-btn" type="submit">Edit</button>
-                                        </form>
-                                        <form method="post" action="{{ url_for('watchlists.delete_watchlist', watchlist_id=watchlist.id) }}" onsubmit="return confirm('Delete this watchlist?');">
-                                            <button class="danger-btn" type="submit">Delete</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="4" class="muted">No watchlists created yet.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            </section>
-
-            <section class="profile-content" data-content="alerts">
-                <section class="panel section">
-                    <h2 style="margin-top:0;">Alerts</h2>
-                    <div class="table-wrap">
-                        <table>
-                            <thead><tr><th>Name</th><th>Stock</th><th>Status</th><th>Triggers</th><th>Actions</th></tr></thead>
-                            <tbody>
-                                {% for alert in alerts %}
-                                <tr data-alert-row="{{ alert.id }}">
-                                    <td><strong>{{ alert.name }}</strong><div class="muted">{{ alert.condition_summary or "Custom condition" }}</div></td>
-                                    <td>{{ alert.ticker or "Any" }}</td>
-                                    <td><span class="status-pill {{ 'active' if alert.status == 'active' else '' }}">{{ alert.status|title }}</span></td>
-                                    <td>{{ alert.trigger_count or 0 }}</td>
-                                    <td class="row-actions">
-                                        <a class="ghost-btn" href="{{ url_for('main.alerts_page') }}">Edit</a>
-                                        <button class="ghost-btn" type="button" onclick="toggleAlert({{ alert.id }}, '{{ 'pause' if alert.status == 'active' else 'resume' }}')">{{ "Disable" if alert.status == "active" else "Enable" }}</button>
-                                        <button class="danger-btn" type="button" onclick="toggleAlert({{ alert.id }}, 'delete')">Delete</button>
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="5" class="muted">No alerts configured yet.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            </section>
-
-            <section class="profile-content" data-content="screens">
-                <section class="panel section">
-                    <h2 style="margin-top:0;">Saved Screens</h2>
-                    <p class="page-subtitle">Your latest saved stock searches are available here until a full screen-builder save system is added.</p>
-                    <div class="table-wrap" style="margin-top:16px;">
-                        <table>
-                            <thead><tr><th>Stock</th><th>Exchange</th><th>Saved</th></tr></thead>
-                            <tbody>
-                                {% for item in history %}
-                                <tr><td><strong>{{ item.company }}</strong></td><td>{{ item.exchange }}</td><td>{{ item.searched_at.strftime("%d %b %Y") if item.searched_at else "-" }}</td></tr>
-                                {% else %}
-                                <tr><td colspan="3" class="muted">No saved screens yet.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            </section>
-
-            <section class="profile-content" data-content="account">
-                <section class="panel section">
-                    <h2 style="margin-top:0;">Account Settings</h2>
-                    <form method="post" action="{{ url_for('profile.update_account') }}" enctype="multipart/form-data" class="stack">
-                        <div class="settings-grid">
-                            <div><label class="field-label">Change Name</label><input class="text-input" name="full_name" value="{{ profile.full_name if profile else '' }}"></div>
-                            <div><label class="field-label">Username</label><input class="text-input" name="username" value="{{ current_user.username }}" required></div>
-                            <div><label class="field-label">Change Email</label><input class="text-input" name="email" type="email" value="{{ current_user.email }}" required></div>
-                            <div><label class="field-label">Phone Number</label><input class="text-input" name="phone_number" maxlength="10" value="{{ profile.phone_number if profile else '' }}"></div>
-                            <div><label class="field-label">WhatsApp Number</label><input class="text-input" name="whatsapp_number" maxlength="15" value="{{ profile.whatsapp_number if profile else '' }}"></div>
-                            <div>
-                                <label class="field-label">Preferred Exchange</label>
-                                <select class="text-input" name="preferred_exchange">
-                                    <option value="NSE" {% if profile and profile.preferred_exchange == 'NSE' %}selected{% endif %}>NSE</option>
-                                    <option value="BSE" {% if profile and profile.preferred_exchange == 'BSE' %}selected{% endif %}>BSE</option>
-                                </select>
-                            </div>
-                            <div><label class="field-label">Profile Photo Upload</label><input class="text-input" name="profile_photo" type="file" accept="image/png,image/jpeg,image/webp"></div>
-                            <label style="display:flex; align-items:center; gap:10px; font-weight:700;"><input type="checkbox" name="sms_enabled" {% if profile and profile.sms_enabled %}checked{% endif %}> Enable SMS notifications</label>
-                        </div>
-                        <button class="primary-btn" type="submit">Save Account Settings</button>
-                    </form>
-                </section>
-            </section>
-
-            <section class="profile-content" data-content="security">
-                <section class="panel section">
-                    <h2 style="margin-top:0;">Security</h2>
-                    <div class="security-row">
-                        <div><strong>Two-factor authentication</strong><div class="muted">Adds a second verification step for future sign-ins.</div></div>
-                        <label class="switch"><input type="checkbox" id="twoFactorToggle"><span></span></label>
-                    </div>
-                    <div class="security-row">
-                        <div><strong>Active login sessions</strong><div class="muted">Current browser session for {{ current_user.email }}.</div></div>
-                        <span class="status-pill active">Active</span>
-                    </div>
-                    <div style="margin-top:20px;">
-                        <!-- <h3>Change Password</h3>
-                        <form method="post" action="{{ url_for('auth.change_password') }}" class="stack">
-                            <div><label class="field-label">Current Password</label><input class="text-input" name="current_password" type="password" required></div>
-                            <div><label class="field-label">New Password</label><input class="text-input" name="new_password" type="password" required></div>
-                            <div><label class="field-label">Confirm New Password</label><input class="text-input" name="confirm_password" type="password" required></div>
-                            <button class="primary-btn" type="submit">Change Password</button>
-                        </form> -->
-                    </div>
-                    <div class="security-row" style="margin-top:20px;">
-                        <div><strong>Logout from all devices</strong><div class="muted">Ends your current session immediately.</div></div>
-                        <a class="danger-btn" href="{{ url_for('auth.logout') }}">Logout All</a>
-                    </div>
-                    <div style="margin-top:18px;">
-                        <h3 style="color:var(--danger);">Delete Account</h3>
-                        <form method="post" action="{{ url_for('profile.delete_account') }}" onsubmit="return confirm('Are you sure you want to permanently delete your account?');">
-                            <button class="danger-btn" type="submit">Delete My Account</button>
-                        </form>
-                    </div>
-                </section>
-            </section>
-        </main>
-    </section>
+  </div>
 </section>
-<script>
-    const initialProfileSection = "{{ section }}";
-    function activateProfileSection(name) {
-        const fallback = document.querySelector("[data-content='dashboard']");
-        const target = document.querySelector(`[data-content="${name}"]`) || fallback;
-        document.querySelectorAll(".profile-content").forEach(section => section.classList.remove("is-active"));
-        document.querySelectorAll(".profile-nav-item[data-section]").forEach(item => item.classList.remove("is-active"));
-        target?.classList.add("is-active");
-        document.querySelector(`[data-section="${target?.dataset.content}"]`)?.classList.add("is-active");
-        const url = new URL(window.location.href);
-        url.searchParams.set("section", target?.dataset.content || "dashboard");
-        history.replaceState(null, "", url);
-    }
-    document.querySelectorAll(".profile-nav-item[data-section]").forEach(item => {
-        item.addEventListener("click", () => activateProfileSection(item.dataset.section));
-    });
-    activateProfileSection(initialProfileSection);
 
-    async function toggleAlert(alertId, action) {
-        if (action === "delete" && !confirm("Delete this alert?")) return;
-        const response = await fetch(`/api/alerts/${alertId}`, {
-            method: "PATCH",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({action})
-        });
-        if (response.ok) window.location.href = "{{ url_for('profile.index', section='alerts') }}";
+<script>
+  function switchProfileTab(sectionId) {
+    document.querySelectorAll(".profile-section").forEach(sec => sec.classList.remove("active"));
+    document.querySelectorAll(".profile-nav-item").forEach(btn => btn.classList.remove("active"));
+    
+    const targetSec = document.getElementById(`profile${capitalize(sectionId)}`);
+    const targetBtn = document.querySelector(`[data-profile-section="${sectionId}"]`);
+    
+    if (targetSec) targetSec.classList.add("active");
+    if (targetBtn) targetBtn.classList.add("active");
+    
+    window.location.hash = sectionId;
+  }
+
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  document.querySelectorAll(".profile-nav-item[data-profile-section]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      switchProfileTab(btn.dataset.profileSection);
+    });
+  });
+
+  window.addEventListener("hashchange", () => {
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      switchProfileTab(hash);
     }
+  });
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const hash = window.location.hash.substring(1) || "dashboard";
+    switchProfileTab(hash);
+    loadProfileData();
+  });
+
+  async function loadProfileData() {
+    try {
+      const res = await fetch("/profile/api/data");
+      if (!res.ok) throw new Error("Failed to fetch profile");
+      const data = await res.json();
+      
+      // Header
+      document.getElementById("profileHeroName").innerText = data.full_name || data.username;
+      document.getElementById("profileHeroEmail").innerText = data.email;
+      document.getElementById("profileMemberSince").innerText = data.member_since;
+      
+      // Avatar: set first letter
+      const avatarLetter = (data.full_name || data.username || 'U').charAt(0).toUpperCase();
+      document.getElementById("profileHeroAvatar").innerText = avatarLetter;
+      
+      // Stats
+      document.getElementById("profileWatchCount").innerText = data.stats.watchlists;
+      document.getElementById("profileStockCount").innerText = data.stats.tracked_stocks;
+      document.getElementById("profileAlertCount").innerText = data.stats.active_alerts;
+      
+      // Recent Searches
+      const historyList = document.getElementById("profileHistory");
+      if (data.history.length > 0) {
+        historyList.innerHTML = data.history.map(h => `
+          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line);">
+            <strong>${h.company}</strong>
+            <span class="muted">${h.searched_at}</span>
+          </div>
+        `).join("");
+      } else {
+        historyList.innerHTML = '<p class="muted">No recent searches yet.</p>';
+      }
+      
+      // Watchlists List
+      const watchRows = document.getElementById("profileWatchlistRows");
+      if (data.watchlists.length > 0) {
+        watchRows.innerHTML = data.watchlists.map(w => `
+          <div class="alert-card">
+            <div class="alert-info">
+              <strong>${w.name} ${w.is_default ? '<span class="badge">Default</span>' : ''}</strong>
+              <span>Stocks: ${w.item_count} | Created: ${w.created_at}</span>
+            </div>
+            <div class="alert-actions">
+              <a class="ghost-btn" href="/dashboard#watchlists">Open</a>
+            </div>
+          </div>
+        `).join("");
+      } else {
+        watchRows.innerHTML = '<p class="muted">No watchlists created yet.</p>';
+      }
+      
+      // Alerts List
+      const alertRows = document.getElementById("profileAlertRows");
+      if (data.alerts.length > 0) {
+        alertRows.innerHTML = data.alerts.map(a => `
+          <div class="alert-card">
+            <div class="alert-info">
+              <strong>${a.name}</strong>
+              <span>Stock: ${a.ticker} | Triggers: ${a.trigger_count} | Status: <span class="badge ${a.status === 'active' ? '' : 'danger'}">${a.status}</span></span>
+            </div>
+            <div class="alert-actions">
+              <button class="ghost-btn" onclick="toggleAlertFromProfile(${a.id}, '${a.status === 'active' ? 'pause' : 'resume'}')">
+                ${a.status === 'active' ? 'Pause' : 'Resume'}
+              </button>
+              <button class="danger-btn" onclick="toggleAlertFromProfile(${a.id}, 'delete')">Delete</button>
+            </div>
+          </div>
+        `).join("");
+      } else {
+        alertRows.innerHTML = '<p class="muted">No alerts configured yet.</p>';
+      }
+      
+      // Account Settings inputs
+      document.getElementById("settingsName").value = data.full_name;
+      document.getElementById("settingsEmail").value = data.email;
+      
+      // Verification state
+      const verifCards = document.getElementById("contactVerificationCards");
+      verifCards.innerHTML = `
+        <div class="verification-card">
+          <div>
+            <strong>Email Address</strong>
+            <p class="muted" style="margin:4px 0 0;">${data.email}</p>
+          </div>
+          <span class="verification-status ${data.email_verified ? 'verified' : 'unverified'}">
+            ${data.email_verified ? 'Verified' : 'Unverified'}
+          </span>
+        </div>
+        <div class="verification-card">
+          <div>
+            <strong>Mobile SMS</strong>
+            <p class="muted" style="margin:4px 0 0;">${data.phone_number || 'Not provided'}</p>
+          </div>
+          <span class="verification-status ${data.mobile_verified ? 'verified' : 'unverified'}">
+            ${data.mobile_verified ? 'Verified' : 'Unverified'}
+          </span>
+        </div>
+      `;
+      
+      // Preference matrix
+      const matrix = document.getElementById("channelPreferenceMatrix");
+      matrix.innerHTML = `
+        <div class="preference-matrix-header">Event</div>
+        <div class="preference-matrix-header">In App</div>
+        <div class="preference-matrix-header">Email</div>
+        <div class="preference-matrix-header">SMS</div>
+        <div class="preference-matrix-header">WhatsApp</div>
+        
+        <div class="preference-matrix-row">
+          <div class="preference-matrix-cell">Price Alerts</div>
+          <div class="preference-matrix-cell"><input type="checkbox" checked disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" ${data.sms_enabled ? '' : 'checked'} disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" ${data.sms_enabled ? 'checked' : ''} disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" ${data.whatsapp_number ? 'checked' : ''} disabled></div>
+        </div>
+        <div class="preference-matrix-row">
+          <div class="preference-matrix-cell">Account Security</div>
+          <div class="preference-matrix-cell"><input type="checkbox" checked disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" checked disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" ${data.phone_number ? 'checked' : ''} disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" disabled></div>
+        </div>
+      `;
+      
+      // Notification History
+      const notifRows = document.getElementById("notificationHistoryRows");
+      if (data.notifications.length > 0) {
+        notifRows.innerHTML = data.notifications.map(n => `
+          <div style="padding:12px; border-bottom:1px solid var(--line); background:${n.is_read ? 'transparent' : 'var(--primary-soft)'}">
+            <p style="margin:0 0 4px; font-weight:700">${n.message}</p>
+            <span class="muted" style="font-size:0.8rem">${n.created_at}</span>
+          </div>
+        `).join("");
+      } else {
+        notifRows.innerHTML = '<p class="muted">No notifications history yet.</p>';
+      }
+      
+      // Security 2FA toggle
+      document.getElementById("twoFactorToggle").checked = data.two_factor_enabled;
+      
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function toggleAlertFromProfile(alertId, action) {
+    if (action === 'delete' && !confirm("Delete this alert?")) return;
+    try {
+      const res = await fetch(`/api/alerts/${alertId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action })
+      });
+      if (!res.ok) throw new Error("Failed");
+      loadProfileData();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  // Form submission listeners
+  document.getElementById("profileSettingsForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("settingsName").value.trim();
+    const email = document.getElementById("settingsEmail").value.trim();
+    
+    try {
+      const res = await fetch("/profile/api/update-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: name, email: email })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update settings");
+      alert(data.message);
+      loadProfileData();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  document.getElementById("profilePasswordForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const currentPassword = document.getElementById("currentPassword").value;
+    const newPassword = document.getElementById("newPassword").value;
+    
+    try {
+      const res = await fetch("/profile/api/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update password");
+      alert(data.message);
+      document.getElementById("currentPassword").value = "";
+      document.getElementById("newPassword").value = "";
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  document.getElementById("twoFactorToggle")?.addEventListener("change", async (e) => {
+    const enabled = e.target.checked;
+    try {
+      const res = await fetch("/profile/api/toggle-2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+    } catch (err) {
+      alert(err.message);
+      e.target.checked = !enabled; // revert
+    }
+  });
+
+  document.getElementById("logoutAllDevices")?.addEventListener("click", () => {
+    if (confirm("Confirm logout from all devices?")) {
+      window.location.href = "{{ url_for('auth.logout') }}";
+    }
+  });
 </script>
 {% endblock %}

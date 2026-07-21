@@ -61,6 +61,7 @@ class UserProfile(db.Model):
     profile_photo_url = db.Column(db.Text)
     sms_enabled = db.Column(db.Boolean, default=False)
     preferred_exchange = db.Column(db.String(20), default="NSE")
+    two_factor_enabled = db.Column(db.Boolean, default=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
@@ -133,6 +134,7 @@ class Alert(db.Model):
     notify_email = db.Column(db.Boolean, default=False)
     notify_inapp = db.Column(db.Boolean, default=True)
     notify_sms = db.Column(db.Boolean, default=False)
+    notify_whatsapp = db.Column(db.Boolean, default=False)
     cooldown_minutes = db.Column(db.Integer, default=60)
     status = db.Column(db.String(20), default="active")
     last_triggered_at = db.Column(db.DateTime)

@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request
 from routes.main import global_df as df
 from services.filter_engine import execute_screen, get_filter_metadata, get_filter_options
 from services.live_market import get_live_quote, get_tradingview_symbol
+from services.search_service import find_symbol, search_stocks
 from services.stock_lookup import lookup_stock, to_app_company
 
 
@@ -97,12 +98,70 @@ def tradingview_symbol(symbol):
 
 @api_bp.route("/stock-search", methods=["GET"])
 def stock_search():
-    symbol = request.args.get("symbol", "")
+    raw = request.args.get("symbol", "").strip()
+    if not raw:
+        return jsonify({"error": "Symbol is required"}), 400
+
+    query = raw.upper()
+
+    # 1. Search the static universe first for name, sector, exchange
+    universe = search_stocks(query, limit=5)
+    static_match = None
+    for s in universe:
+        if s["symbol"] == query:
+            static_match = s
+            break
+    if static_match is None and universe:
+        static_match = universe[0]
+
+    # 2. Try to resolve via find_symbol for the base symbol
+    resolved_symbol = find_symbol(raw)
+    base_symbol = resolved_symbol or (static_match["symbol"] if static_match else query)
+
+    # 3. Build the .NS symbol for live lookup
+    nse_symbol = base_symbol.upper()
+    if not nse_symbol.endswith(".NS") and not nse_symbol.endswith(".BO"):
+        nse_symbol = nse_symbol + ".NS"
+
+    # 4. Try live price lookup (best-effort)
+    live_data = {}
     try:
-        stock = lookup_stock(symbol)
-        stock["app_company"] = to_app_company(symbol)
-        return jsonify(stock)
-    except ValueError as exc:
-        return jsonify({"error": str(exc)}), 400
-    except Exception as exc:
-        return jsonify({"error": f"Stock lookup failed: {exc}"}), 502
+        live_result = lookup_stock(nse_symbol)
+        if live_result:
+            live_data = {
+                "price": live_result.get("price"),
+                "previous_close": live_result.get("previous_close"),
+                "day_high": live_result.get("day_high"),
+                "day_low": live_result.get("day_low"),
+                "volume": live_result.get("volume"),
+                "fetched_at": live_result.get("fetched_at"),
+                "updated_at": live_result.get("updated_at"),
+            }
+    except Exception:
+        # yfinance failure — still return static data
+        pass
+
+    # 5. Merge static + live data — static always wins for name/sector/exchange
+    result = {
+        "symbol": base_symbol,
+        "base_symbol": base_symbol,
+        "name": (static_match or {}).get("name", base_symbol),
+        "sector": (static_match or {}).get("sector", "Others"),
+        "exchange": (static_match or {}).get("exchange", "NSE"),
+        "app_company": base_symbol,
+        **live_data,
+    }
+
+    return jsonify(result)
+
+
+@api_bp.route("/autocomplete", methods=["GET"])
+def autocomplete():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify([])
+
+    # For short queries, return more results to surface popular stocks
+    limit = 30 if len(q) <= 2 else 15
+    results = search_stocks(q, limit=limit)
+    return jsonify(results)
