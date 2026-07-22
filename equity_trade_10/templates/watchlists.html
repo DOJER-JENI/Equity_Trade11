@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="panel section">
+    <h1 class="page-title">Custom Watchlists</h1>
+    <p class="page-subtitle">Create and manage your own watchlists.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="panel" style="padding:12px 16px; border-radius:14px; margin:16px 0; background:{% if category == 'success' %}#edf9d8{% else %}#fdeaea{% endif %}; color:{% if category == 'success' %}#456b12{% else %}#b42318{% endif %};">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="post" action="{{ url_for('watchlists.create') }}" style="margin:20px 0;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+            <input class="text-input" name="name" placeholder="My Custom Watchlist" style="max-width:320px;" required>
+            <label><input type="checkbox" name="is_default"> Set as default</label>
+            <button class="primary-btn" type="submit">Create</button>
+        </div>
+    </form>
+
+    <div class="stack">
+        {% for watchlist in watchlists %}
+        <div class="panel section" style="padding:18px;">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+                <div>
+                    <div style="font-weight:800;">{{ watchlist.name }} {% if watchlist.is_default %}(Default){% endif %}</div>
+                    <div class="muted">{{ watchlist.items|length }} companies</div>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <a class="ghost-btn" href="{{ url_for('watchlists.detail', watchlist_id=watchlist.id) }}">Open</a>
+                    <form method="post" action="{{ url_for('watchlists.delete_watchlist', watchlist_id=watchlist.id) }}">
+                        <button class="danger-btn" type="submit">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">No custom watchlists created yet.</div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

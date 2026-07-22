@@ -1,0 +1,1162 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<style>
+  /* Tab Panel styles */
+  .tab-panel {
+    display: none;
+  }
+  .tab-panel.active {
+    display: block;
+  }
+
+  /* Metric cards */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow);
+  }
+  .card span {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .card b {
+    font-size: 1.8rem;
+    margin-top: 8px;
+    font-weight: 800;
+  }
+
+  /* Market badge */
+  .market {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .market.open {
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    color: var(--success);
+  }
+  .market.closed {
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: var(--danger);
+  }
+
+  /* Market Movers Grid */
+  .market-movers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 16px;
+  }
+  .mover-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+  .mover-card h2 {
+    margin-top: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+  }
+  .mover-card-gain h2 { color: var(--success); }
+  .mover-card-loss h2 { color: var(--danger); }
+  
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .mover-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    font-weight: 700;
+  }
+  .mover-row:hover {
+    background: var(--hover);
+  }
+
+  /* Watchlists Workspace Layout */
+  .watch-workspace {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 20px;
+    margin-top: 16px;
+    min-height: 400px;
+  }
+  .watch-list-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-right: 1px solid var(--line);
+    padding-right: 16px;
+  }
+  .watch-nav-item {
+    padding: 12px 14px;
+    border-radius: 6px;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .watch-nav-item:hover, .watch-nav-item.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+  .watch-detail {
+    padding: 8px;
+  }
+  .create-watch-form {
+    display: flex;
+    gap: 10px;
+  }
+  .create-watch-form input {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: var(--input);
+    color: var(--text);
+  }
+  .create-watch-form button {
+    background: var(--primary);
+    color: white;
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Search Shell */
+  .rich-search-shell {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  #stockSearch {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--input);
+    color: var(--text);
+    outline: none;
+  }
+  #stockSearch:focus {
+    border-color: var(--primary);
+  }
+  .stock-autocomplete {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 99;
+    max-height: 250px;
+    overflow-y: auto;
+    display: none;
+  }
+  .stock-autocomplete.show {
+    display: block;
+  }
+  .autocomplete-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-weight: 600;
+    border-bottom: 1px solid var(--line);
+  }
+  .autocomplete-item:last-child {
+    border-bottom: none;
+  }
+  .autocomplete-item:hover,
+  .autocomplete-item.highlighted {
+    background: var(--hover);
+  }
+  .autocomplete-item.highlighted {
+    background: var(--primary-soft);
+    border-left: 3px solid var(--primary);
+  }
+
+  /* Screener style */
+  .filter-row {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr 1.2fr auto;
+    gap: 12px;
+    align-items: center;
+    background: var(--bg);
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    margin-bottom: 10px;
+  }
+
+  /* Alerts style */
+  .pro-alert-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+    background: var(--panel-soft);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+  .pro-alert-form input, .pro-alert-form select {
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--input);
+    color: var(--text);
+  }
+  .pro-alert-form .channels {
+    grid-column: span 3;
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .pro-alert-form .chan {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--text);
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: center;
+  }
+  .pro-alert-form .chan.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+  .pro-alert-form #saveAlert {
+    grid-column: span 3;
+    background: var(--primary-strong);
+    color: white;
+    padding: 12px;
+    border-radius: 6px;
+    border: 0;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  
+  .alert-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow);
+  }
+  .alert-info strong {
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .alert-info span {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .alert-actions {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .soft-action {
+    color: var(--primary);
+    font-weight: 700;
+    cursor: pointer;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="page dashboard" data-user="{{ current_user.id }}">
+  <div class="dash-head" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+    <div>
+      <p class="eyebrow" style="margin:0 0 6px; text-transform:uppercase; font-size:0.8rem; font-weight:800; color:var(--muted)">Portfolio summary</p>
+      <h1 style="margin:0; font-size:2.2rem; font-weight:800">Your NSE/BSE command desk</h1>
+    </div>
+    <span class="market {{ 'open' if market.open else 'closed' }}">{{ market.label }} - {{ market.updated_at }}</span>
+  </div>
+
+  <div class="cards">
+    <div class="card"><span>Stocks tracked</span><b id="stockCount">--</b></div>
+    <div class="card"><span>Market</span><b id="marketLabel">{{ market.label }}</b></div>
+    <div class="card"><span>Watchlists</span><b id="watchCount">--</b></div>
+  </div>
+
+  <!-- Overview Section -->
+  <section id="overview" class="tab-panel active">
+    <div class="two market-movers">
+      <div class="mover-card mover-card-gain">
+        <h2>Top gainers</h2>
+        <div id="gainers" class="list"></div>
+      </div>
+      <div class="mover-card mover-card-loss">
+        <h2>Top losers</h2>
+        <div id="losers" class="list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Watchlists Section -->
+  <section id="watchlists" class="panel tab-panel" style="padding: 24px;">
+    <div class="panel-head" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:16px;">
+      <div>
+        <h2>Watchlists</h2>
+        <p class="muted" style="margin:4px 0 0;">Create lists, open each list, add stocks, and review company information.</p>
+      </div>
+      <form id="createWatchForm" class="create-watch-form">
+        <input class="text-input" id="newWatchName" placeholder="New watchlist name" style="max-width: 200px;">
+        <button id="newWatch" type="submit">Create watchlist</button>
+      </form>
+    </div>
+    <div class="watch-workspace">
+      <aside id="watchListNav" class="watch-list-nav"></aside>
+      <div id="watchDetail" class="watch-detail"></div>
+    </div>
+  </section>
+
+  <!-- Search Section -->
+  <section id="search" class="panel tab-panel" style="padding: 24px;">
+    <h2>Stock search</h2>
+    <div class="rich-search-shell">
+      <input id="stockSearch" placeholder="Search company name, symbol, or sector" autocomplete="off">
+      <div id="searchDropdown" class="stock-autocomplete" aria-hidden="true"></div>
+      <p id="recentSearches" class="muted" style="margin-top: 10px;"></p>
+    </div>
+    <div id="searchResults" class="results"></div>
+  </section>
+
+  <!-- Screener Section -->
+  <section id="screener" class="panel tab-panel" style="padding: 24px;">
+    <div class="panel-head" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2>Filter engine</h2>
+      <button class="primary-btn" id="addFilter" onclick="addFilter()">Add filter</button>
+    </div>
+    <div id="filters" class="stack" style="margin-bottom:16px;"></div>
+    <button class="primary-btn" id="runScreen" onclick="runScreen()">Apply filters</button>
+    <div id="screenResults" class="results" style="margin-top: 24px;"></div>
+  </section>
+
+  <!-- Alerts Section -->
+  <section id="alerts" class="panel tab-panel" style="padding: 24px;">
+    <div class="panel-head" style="margin-bottom:16px;">
+      <div>
+        <h2>Alerts Management</h2>
+        <p class="muted">Create, pause, edit, delete, and review triggered alert history.</p>
+      </div>
+    </div>
+    <div class="alert-form pro-alert-form">
+      <input id="alertSymbol" placeholder="Symbol e.g. INFY.NS">
+      <select id="alertCondition">
+        <option value=">">Price goes above</option>
+        <option value="<">Price falls below</option>
+        <option value="pct>">Daily % change exceeds</option>
+      </select>
+      <input id="alertTarget" type="number" placeholder="Target value">
+      <div class="channels">
+        <button class="chan active" data-channel="in-app">In app</button>
+        <button class="chan" data-channel="email">Email</button>
+        <button class="chan" data-channel="sms">SMS</button>
+        <button class="chan" data-channel="whatsapp">WhatsApp</button>
+      </div>
+      <button id="saveAlert">Create alert</button>
+    </div>
+    <h3 style="margin-top: 24px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">Active alerts</h3>
+    <div id="alertList" class="results"></div>
+    <h3 style="margin-top: 24px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">Alert history</h3>
+    <div id="alertHistory" class="results"></div>
+  </section>
+</section>
+
+<script>
+  // Tab Switching logic
+  function switchTab(tabId) {
+    document.querySelectorAll(".tab-panel").forEach(panel => {
+      panel.classList.remove("active");
+    });
+    const targetPanel = document.getElementById(tabId);
+    if (targetPanel) {
+      targetPanel.classList.add("active");
+    }
+    
+    // Highlight active link in navbar
+    document.querySelectorAll(".nav-actions a").forEach(link => {
+      if (link.getAttribute("href") === `/dashboard#${tabId}`) {
+        link.style.borderBottom = "2px solid var(--primary)";
+      } else {
+        link.style.borderBottom = "none";
+      }
+    });
+
+    if (tabId === "overview") {
+      loadOverview();
+    } else if (tabId === "watchlists") {
+      loadWatchlists();
+    } else if (tabId === "search") {
+      loadRecentSearches();
+    } else if (tabId === "screener") {
+      if (document.getElementById("filters").children.length === 0) {
+        addFilter();
+      }
+    } else if (tabId === "alerts") {
+      loadAlerts();
+    }
+  }
+
+  window.addEventListener("hashchange", () => {
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      switchTab(hash);
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const hash = window.location.hash.substring(1) || "overview";
+    switchTab(hash);
+  });
+
+  // Overview functionality
+  async function loadOverview() {
+    try {
+      const profileRes = await fetch("/profile/api/data");
+      if (profileRes.ok) {
+        const pData = await profileRes.json();
+        document.getElementById("stockCount").innerText = pData.stats.tracked_stocks;
+        document.getElementById("watchCount").innerText = pData.stats.watchlists;
+      }
+
+      const moversRes = await fetch("/api/top-movers-json");
+      if (moversRes.ok) {
+        const mData = await moversRes.json();
+        const gainersList = document.getElementById("gainers");
+        const losersList = document.getElementById("losers");
+        
+        gainersList.innerHTML = mData.gainers.map(stock => `
+          <div class="mover-row">
+            <span><a href="/chart/${stock.Company}">${stock.Company}</a></span>
+            <span style="color:var(--success)">+${Number(stock.ChangePct || 0).toFixed(2)}%</span>
+          </div>
+        `).join("") || '<p class="muted">No gainers today.</p>';
+        
+        losersList.innerHTML = mData.losers.map(stock => `
+          <div class="mover-row">
+            <span><a href="/chart/${stock.Company}">${stock.Company}</a></span>
+            <span style="color:var(--danger)">${Number(stock.ChangePct || 0).toFixed(2)}%</span>
+          </div>
+        `).join("") || '<p class="muted">No losers today.</p>';
+      }
+    } catch (err) {
+      console.error("Failed to load overview data:", err);
+    }
+  }
+
+  // Watchlists functionality
+  let activeWatchlistId = null;
+
+  async function loadWatchlists() {
+    try {
+      const res = await fetch("/watchlists/api/list");
+      if (!res.ok) throw new Error("Failed to load");
+      const lists = await res.json();
+      
+      const nav = document.getElementById("watchListNav");
+      nav.innerHTML = lists.map(l => `
+        <button class="watch-nav-item ${activeWatchlistId === l.id ? 'active' : ''}" type="button" onclick="selectWatchlist(${l.id})">
+          <span>${l.name}</span>
+          <span class="muted" style="font-size:0.8rem">(${l.item_count})</span>
+        </button>
+      `).join("");
+      
+      if (lists.length > 0 && activeWatchlistId === null) {
+        selectWatchlist(lists[0].id);
+      } else if (lists.length === 0) {
+        document.getElementById("watchDetail").innerHTML = '<div class="empty-state">No watchlists. Create one above to get started!</div>';
+      }
+    } catch (e) {
+      console.error("Watchlists load error:", e);
+    }
+  }
+
+  async function selectWatchlist(id) {
+    activeWatchlistId = id;
+    document.querySelectorAll(".watch-nav-item").forEach(btn => btn.classList.remove("active"));
+    const navItems = document.querySelectorAll(".watch-nav-item");
+    
+    const detailDiv = document.getElementById("watchDetail");
+    detailDiv.innerHTML = '<p class="muted">Loading watchlist details...</p>';
+    
+    try {
+      const res = await fetch(`/watchlists/api/${id}`);
+      if (!res.ok) throw new Error("Failed to load");
+      const w = await res.json();
+      
+      detailDiv.innerHTML = `
+        <div class="section-title-row" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div>
+            <h3>${w.name} ${w.is_default ? '<span class="badge">Default</span>' : ''}</h3>
+          </div>
+          <div>
+            <button class="danger-btn" onclick="deleteWatchlist(${w.id})">Delete List</button>
+          </div>
+        </div>
+        
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Stock</th>
+                <th>Price</th>
+                <th>Change</th>
+                <th>RSI</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${w.items.map(item => `
+                <tr>
+                  <td><strong><a href="/chart/${item.company}">${item.company_name || item.company}</a></strong></td>
+                  <td>${item.price !== null ? Number(item.price).toFixed(2) : '--'}</td>
+                  <td style="color: ${item.change_pct >= 0 ? 'var(--success)' : 'var(--danger)'}">
+                    ${item.change_pct >= 0 ? '+' : ''}${Number(item.change_pct).toFixed(2)}%
+                  </td>
+                  <td>${item.rsi !== null ? Number(item.rsi).toFixed(2) : '--'}</td>
+                  <td>
+                    <button class="danger-btn" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeStockFromWatchlist(${w.id}, ${item.id})">Remove</button>
+                  </td>
+                </tr>
+              `).join("") || '<tr><td colspan="5" class="muted">No stocks in this watchlist. Add some below!</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+        
+<div style="margin-top: 20px; display: flex; gap: 10px;">
+          <div class="rich-search-shell" style="flex:1; max-width: 320px;">
+            <input class="text-input" id="addStockSymbol" placeholder="Search company name or symbol" autocomplete="off" style="width:100%;">
+            <div id="wlSearchDropdown" class="stock-autocomplete" aria-hidden="true"></div>
+          </div>
+<button class="primary-btn" onclick="addStockToWatchlist(${w.id})">Add Stock</button>
+        </div>
+      `;
+      // Initialize watchlist autocomplete after DOM update
+      setTimeout(initWlAutocomplete, 100);
+    } catch (e) {
+      detailDiv.innerHTML = `<div class="empty-state">Error loading watchlist: ${e.message}</div>`;
+    }
+  }
+
+  document.getElementById("createWatchForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nameInput = document.getElementById("newWatchName");
+    const name = nameInput.value.trim();
+    if (!name) return;
+    
+    try {
+      const res = await fetch("/watchlists/api/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      nameInput.value = "";
+      activeWatchlistId = data.watchlist_id;
+      loadWatchlists();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+// Watchlist Add Stock autocomplete state
+  let wlSearchItems = [];
+  let wlHighlightIdx = -1;
+  let wlSearchTimer = null;
+  let wlSelectedSymbol = "";
+
+  function initWlAutocomplete() {
+    const wlInput = document.getElementById("addStockSymbol");
+    const wlDropdown = document.getElementById("wlSearchDropdown");
+    if (!wlInput || !wlDropdown) return;
+
+    // Remove old listeners by cloning
+    // Use fresh event listeners
+    wlInput.addEventListener("input", function wlInputHandler() {
+      clearTimeout(wlSearchTimer);
+      const q = this.value.trim();
+      if (!q) {
+        wlDropdown.classList.remove("show");
+        wlSearchItems = [];
+        wlHighlightIdx = -1;
+        wlSelectedSymbol = "";
+        return;
+      }
+      wlSearchTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(q)}`);
+          if (!res.ok) return;
+          wlSearchItems = await res.json();
+          if (wlSearchItems.length > 0) {
+            renderWlDropdown(wlSearchItems, -1);
+            wlDropdown.classList.add("show");
+          } else {
+            wlDropdown.classList.remove("show");
+          }
+        } catch (e) { console.error(e); }
+      }, 250);
+    });
+
+    wlInput.addEventListener("keydown", function wlKeyHandler(e) {
+      if (!wlDropdown.classList.contains("show") || wlSearchItems.length === 0) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const q = this.value.trim();
+          if (q) selectWlStock(q);
+        }
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        wlHighlightIdx = Math.min(wlHighlightIdx + 1, wlSearchItems.length - 1);
+        renderWlDropdown(wlSearchItems, wlHighlightIdx);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        wlHighlightIdx = Math.max(wlHighlightIdx - 1, 0);
+        renderWlDropdown(wlSearchItems, wlHighlightIdx);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (wlHighlightIdx >= 0 && wlHighlightIdx < wlSearchItems.length) {
+          selectWlStock(wlSearchItems[wlHighlightIdx].symbol);
+        } else {
+          const q = this.value.trim();
+          if (q) selectWlStock(q);
+        }
+      } else if (e.key === "Escape") {
+        wlDropdown.classList.remove("show");
+        wlSearchItems = [];
+        wlHighlightIdx = -1;
+      }
+    });
+
+    wlInput.addEventListener("blur", function() {
+      // Delay to allow click on dropdown item
+      setTimeout(() => {
+        wlDropdown.classList.remove("show");
+      }, 200);
+    });
+
+    // Attach event delegation on the (newly created) dropdown element
+    setupWlDropdownEvents();
+  }
+
+  function renderWlDropdown(items, highlightIdx) {
+    const wlDropdown = document.getElementById("wlSearchDropdown");
+    if (!wlDropdown) return;
+    wlDropdown.innerHTML = items.map((item, idx) => `
+      <div class="autocomplete-item ${idx === highlightIdx ? 'highlighted' : ''}"
+           data-index="${idx}"
+           data-symbol="${item.symbol}">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span>
+            <strong>${item.name || item.symbol}</strong>
+            <span class="muted" style="font-size:0.82rem; margin-left:8px;">${item.symbol}</span>
+          </span>
+          <span class="badge" style="font-size:0.72rem;">${item.sector || item.exchange || ''}</span>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function setupWlDropdownEvents() {
+    const wlDropdownEl = document.getElementById("wlSearchDropdown");
+    if (!wlDropdownEl) return;
+    wlDropdownEl.addEventListener("click", function wlClickHandler(e) {
+      const item = e.target.closest(".autocomplete-item");
+      if (!item) return;
+      const symbol = item.dataset.symbol;
+      if (symbol) selectWlStock(symbol);
+    });
+    wlDropdownEl.addEventListener("mouseover", function wlHoverHandler(e) {
+      const item = e.target.closest(".autocomplete-item");
+      if (!item) return;
+      // Highlight via CSS class only — avoid innerHTML replacement that destroys click targets
+      wlDropdownEl.querySelectorAll(".autocomplete-item").forEach(el => el.classList.remove("highlighted"));
+      item.classList.add("highlighted");
+      const idx = parseInt(item.dataset.index, 10);
+      if (!isNaN(idx)) wlHighlightIdx = idx;
+    });
+  }
+
+  function selectWlStock(symbol) {
+    const wlInput = document.getElementById("addStockSymbol");
+    const wlDropdown = document.getElementById("wlSearchDropdown");
+    if (!wlInput || !wlDropdown) return;
+    wlSelectedSymbol = symbol;
+    wlInput.value = symbol;
+    wlDropdown.classList.remove("show");
+    wlSearchItems = [];
+    wlHighlightIdx = -1;
+  }
+
+  async function addStockToWatchlist(watchlistId) {
+    const input = document.getElementById("addStockSymbol");
+    // Use the autocomplete-selected symbol if available, otherwise use raw input
+    const symbol = wlSelectedSymbol || input.value.trim().toUpperCase();
+    if (!symbol) return;
+    
+    try {
+      const res = await fetch(`/watchlists/api/${watchlistId}/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbol })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      input.value = "";
+      wlSelectedSymbol = "";
+      selectWatchlist(watchlistId);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function removeStockFromWatchlist(watchlistId, itemId) {
+    if (!confirm("Remove this stock from watchlist?")) return;
+    try {
+      const res = await fetch(`/watchlists/api/${watchlistId}/remove/${itemId}`, {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      selectWatchlist(watchlistId);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  async function deleteWatchlist(watchlistId) {
+    if (!confirm("Are you sure you want to delete this watchlist?")) return;
+    try {
+      const res = await fetch(`/watchlists/api/${watchlistId}/delete`, {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      activeWatchlistId = null;
+      loadWatchlists();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  // ── Stock Search functionality ─────────────────────────────────────────
+  const stockSearch = document.getElementById("stockSearch");
+  const searchDropdown = document.getElementById("searchDropdown");
+  const recentSearches = document.getElementById("recentSearches");
+  const searchResults = document.getElementById("searchResults");
+
+  let searchTimeout = null;
+  let searchItems = [];           // stores the last autocomplete results
+  let searchHighlightIndex = -1;  // keyboard navigation index
+
+  stockSearch?.addEventListener("input", () => {
+    clearTimeout(searchTimeout);
+    const query = stockSearch.value.trim();
+    if (!query) {
+      searchDropdown.classList.remove("show");
+      searchItems = [];
+      searchHighlightIndex = -1;
+      return;
+    }
+
+    searchTimeout = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(query)}`);
+        if (!res.ok) return;
+        searchItems = await res.json();
+        if (searchItems.length > 0) {
+          renderDropdown(searchItems, -1);
+          searchDropdown.classList.add("show");
+        } else {
+          searchDropdown.classList.remove("show");
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }, 250);
+  });
+
+  // Keyboard navigation (↑ ↓ Enter Escape)
+  stockSearch?.addEventListener("keydown", (e) => {
+    if (!searchDropdown.classList.contains("show") || searchItems.length === 0) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const q = stockSearch.value.trim();
+        if (q) openStockPage(q);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      searchHighlightIndex = Math.min(searchHighlightIndex + 1, searchItems.length - 1);
+      renderDropdown(searchItems, searchHighlightIndex);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      searchHighlightIndex = Math.max(searchHighlightIndex - 1, 0);
+      renderDropdown(searchItems, searchHighlightIndex);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (searchHighlightIndex >= 0 && searchHighlightIndex < searchItems.length) {
+        const selected = searchItems[searchHighlightIndex];
+        openStockPage(selected.symbol);
+      } else {
+        const q = stockSearch.value.trim();
+        if (q) openStockPage(q);
+      }
+    } else if (e.key === "Escape") {
+      searchDropdown.classList.remove("show");
+      searchItems = [];
+      searchHighlightIndex = -1;
+    }
+  });
+
+  function renderDropdown(items, highlightIndex) {
+    searchDropdown.innerHTML = items.map((item, idx) => {
+      const isHighlighted = idx === highlightIndex;
+      return `
+        <div class="autocomplete-item ${isHighlighted ? 'highlighted' : ''}"
+             data-index="${idx}"
+             data-symbol="${item.symbol}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>
+              <strong>${item.name || item.symbol}</strong>
+              <span class="muted" style="font-size:0.82rem; margin-left:8px;">${item.symbol}</span>
+            </span>
+            <span class="badge" style="font-size:0.72rem;">${item.sector || item.exchange || ''}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // Event delegation for searchDropdown — click and mouseover
+  searchDropdown?.addEventListener("click", (e) => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    const symbol = item.dataset.symbol;
+    if (symbol) openStockPage(symbol);
+  });
+
+  searchDropdown?.addEventListener("mouseover", (e) => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    const idx = parseInt(item.dataset.index, 10);
+    if (!isNaN(idx) && idx !== searchHighlightIndex) {
+      searchHighlightIndex = idx;
+      renderDropdown(searchItems, searchHighlightIndex);
+    }
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!stockSearch?.contains(e.target) && !searchDropdown?.contains(e.target)) {
+      searchDropdown.classList.remove("show");
+      searchItems = [];
+      searchHighlightIndex = -1;
+    }
+  });
+
+  function openStockPage(symbol) {
+    searchDropdown.classList.remove("show");
+    searchItems = [];
+    searchHighlightIndex = -1;
+    stockSearch.value = symbol;
+    // Navigate to the chart page
+    window.location.href = `/chart/${encodeURIComponent(symbol)}`;
+  }
+
+  async function triggerSearch(symbol) {
+    stockSearch.value = symbol;
+    searchDropdown.classList.remove("show");
+    searchResults.innerHTML = '<p class="muted">Loading search results...</p>';
+
+    try {
+      const res = await fetch(`/api/stock-search?symbol=${encodeURIComponent(symbol)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Stock not found");
+
+      searchResults.innerHTML = `
+        <div class="panel" style="padding:20px; border-radius:8px; margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3>${data.name || symbol}</h3>
+            <span class="badge">${data.exchange}</span>
+          </div>
+          <div class="cards" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
+            <div class="card"><span>Price</span><b>${data.price !== null ? Number(data.price).toFixed(2) : '--'}</b></div>
+            <div class="card"><span>Prev Close</span><b>${data.previous_close !== null ? Number(data.previous_close).toFixed(2) : '--'}</b></div>
+            <div class="card"><span>Day High</span><b>${data.day_high !== null ? Number(data.day_high).toFixed(2) : '--'}</b></div>
+            <div class="card"><span>Day Low</span><b>${data.day_low !== null ? Number(data.day_low).toFixed(2) : '--'}</b></div>
+          </div>
+          <div>
+            <a class="primary-btn" href="/chart/${data.app_company || symbol}">View Advanced Chart</a>
+          </div>
+        </div>
+      `;
+
+      loadRecentSearches();
+    } catch (e) {
+      searchResults.innerHTML = `<div class="empty-state" style="color:var(--danger)">Error: ${e.message}</div>`;
+    }
+  }
+
+  async function loadRecentSearches() {
+    try {
+      const res = await fetch("/profile/api/data");
+      if (!res.ok) return;
+      const pData = await res.json();
+      if (pData.history.length > 0) {
+        recentSearches.innerHTML = 'Recent: ' + pData.history.map(h => `
+          <span class="soft-action" style="margin-right: 12px; cursor:pointer;" onclick="triggerSearch('${h.company}')">${h.company}</span>
+        `).join("");
+      } else {
+        recentSearches.innerHTML = 'No recent searches.';
+      }
+    } catch (e) {}
+  }
+
+  // Screener functionality
+  const fieldGroups = {
+    "Price & Volume": ["last_price", "volume", "market_cap", "week_52_high", "week_52_low"],
+    "Valuation": ["pe_ratio", "pb_ratio", "dividend_yield"],
+    "Growth": ["eps_growth_yoy", "revenue_growth_yoy", "profit_margin", "roe"],
+    "Technical": ["rsi_14", "ema_20", "ema_50", "ema_200", "volume_ratio"]
+  };
+  const operators = [">", "<", ">=", "<=", "=", "BETWEEN"];
+
+  function fieldOptions() {
+    return Object.entries(fieldGroups).map(([group, fields]) =>
+      `<optgroup label="${group}">${fields.map(f => `<option value="${f}">${f.replaceAll("_", " ")}</option>`).join("")}</optgroup>`
+    ).join("");
+  }
+
+  function addFilter() {
+    const row = document.createElement("div");
+    row.className = "filter-row";
+    row.innerHTML = `
+      <select class="text-input filter-field">${fieldOptions()}</select>
+      <select class="text-input filter-op">${operators.map(o => `<option value="${o}">${o}</option>`).join("")}</select>
+      <input class="text-input filter-value" placeholder="Value or min,max">
+      <button class="danger-btn" type="button" onclick="this.closest('.filter-row').remove()">Delete</button>
+    `;
+    document.getElementById("filters").appendChild(row);
+  }
+
+  async function runScreen() {
+    const conditions = [...document.querySelectorAll("#filters .filter-row")].map(row => {
+      const field = row.querySelector(".filter-field").value;
+      const operator = row.querySelector(".filter-op").value;
+      const raw = row.querySelector(".filter-value").value.trim();
+      const value = operator === "BETWEEN"
+        ? { min: raw.split(",")[0], max: raw.split(",")[1] }
+        : raw;
+      return { field, operator, value };
+    }).filter(c => c.value && (!c.value.min || c.value.max));
+
+    const res = await fetch("/api/screen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ logic: "AND", conditions, sort_by: "volume", sort_dir: "DESC", limit: 100 })
+    });
+    const data = await res.json();
+    const resultsDiv = document.getElementById("screenResults");
+    
+    if (!res.ok) {
+      resultsDiv.innerHTML = `<div class="empty-state">${data.error || "Screen failed"}</div>`;
+      return;
+    }
+    
+    resultsDiv.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Stock</th><th>Price</th><th>P/E</th><th>Volume</th><th>52W High</th><th>52W Low</th><th>RSI</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.data.map(row => `
+              <tr>
+                <td><strong>${row.company}</strong></td>
+                <td>${Number(row.last_price || 0).toFixed(2)}</td>
+                <td>${Number(row.pe_ratio || 0).toFixed(2)}</td>
+                <td>${Number(row.volume || 0).toLocaleString()}</td>
+                <td>${Number(row.week_52_high || 0).toFixed(2)}</td>
+                <td>${Number(row.week_52_low || 0).toFixed(2)}</td>
+                <td>${Number(row.rsi_14 || 0).toFixed(2)}</td>
+                <td><a class="ghost-btn" href="/chart/${row.company}">View</a></td>
+              </tr>
+            `).join("") || '<tr><td colspan="8" class="muted">No matching stocks.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // Alerts functionality
+  let selectedChannel = "in-app";
+  document.querySelectorAll(".alert-form .chan").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".alert-form .chan").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      selectedChannel = btn.dataset.channel;
+    });
+  });
+
+  document.getElementById("saveAlert")?.addEventListener("click", async () => {
+    const symbol = document.getElementById("alertSymbol").value.trim().toUpperCase();
+    const conditionOp = document.getElementById("alertCondition").value;
+    const target = parseFloat(document.getElementById("alertTarget").value);
+    
+    if (!symbol) {
+      alert("Symbol is required");
+      return;
+    }
+    if (isNaN(target)) {
+      alert("Target value is required");
+      return;
+    }
+    
+    let field = "last_price";
+    let operator = conditionOp;
+    if (conditionOp === "pct>") {
+      field = "pct_change";
+      operator = ">";
+    }
+    
+    const payload = {
+      name: `Alert for ${symbol} when ${field} ${operator} ${target}`,
+      ticker: symbol,
+      channel: selectedChannel,
+      notify_inapp: true,
+      cooldown_minutes: 60,
+      note: "",
+      condition: {
+        logic: "AND",
+        conditions: [
+          {
+            field: field,
+            operator: operator,
+            value: target
+          }
+        ]
+      }
+    };
+    
+    try {
+      const res = await fetch("/api/alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      
+      alert("Alert created successfully");
+      document.getElementById("alertSymbol").value = "";
+      document.getElementById("alertTarget").value = "";
+      loadAlerts();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  async function loadAlerts() {
+    try {
+      const resActive = await fetch("/api/alerts?status=active");
+      const activeAlerts = await resActive.json();
+      const activeDiv = document.getElementById("alertList");
+      
+      activeDiv.innerHTML = activeAlerts.map(a => `
+        <div class="alert-card">
+          <div class="alert-info">
+            <strong>${a.name}</strong>
+            <span>Stock: ${a.ticker || 'Any'} | Channel: ${a.notify_email ? 'Email' : (a.notify_sms ? 'SMS' : (a.notify_whatsapp ? 'WhatsApp' : 'In app'))}</span>
+          </div>
+          <div class="alert-actions">
+            <button class="ghost-btn" onclick="toggleAlert(${a.id}, 'pause')">Pause</button>
+            <button class="danger-btn" onclick="toggleAlert(${a.id}, 'delete')">Delete</button>
+          </div>
+        </div>
+      `).join("") || '<p class="muted">No active alerts.</p>';
+
+      const resHist = await fetch("/api/notifications");
+      const histData = await resHist.json();
+      const histDiv = document.getElementById("alertHistory");
+      
+      histDiv.innerHTML = histData.map(n => `
+        <div class="alert-card" style="border-left: 4px solid var(--primary)">
+          <div class="alert-info">
+            <strong>${n.message}</strong>
+            <span>Triggered at: ${n.created_at || 'Recently'}</span>
+          </div>
+        </div>
+      `).join("") || '<p class="muted">No alert history triggered yet.</p>';
+      
+    } catch (e) {
+      console.error("Alerts load error:", e);
+    }
+  }
+
+  async function toggleAlert(alertId, action) {
+    if (action === "delete" && !confirm("Delete this alert?")) return;
+    try {
+      const res = await fetch(`/api/alerts/${alertId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action })
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      loadAlerts();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+</script>
+{% endblock %}

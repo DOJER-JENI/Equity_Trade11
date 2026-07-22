@@ -1,0 +1,691 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<style>
+  /* Profile Layout */
+  .profile-shell {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  .profile-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    height: fit-content;
+  }
+  .profile-nav-item {
+    padding: 12px 16px;
+    border-radius: 6px;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+  .profile-nav-item:hover, .profile-nav-item.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+  .profile-nav-item.danger {
+    color: var(--danger);
+  }
+  .profile-nav-item.danger:hover {
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+  
+  /* Sections styling */
+  .profile-section {
+    display: none;
+  }
+  .profile-section.active {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  /* Profile Hero Header */
+  .profile-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+  .profile-identity {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .profile-meta {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+  }
+  .profile-meta span {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .profile-meta b {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-top: 4px;
+  }
+
+  /* Cards */
+  .profile-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+  .profile-card h2 {
+    margin-top: 0;
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-bottom: 16px;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  
+  .management-list, .preference-list, .session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  /* Settings form styling */
+  .settings-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .settings-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .settings-form input {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--input);
+    color: var(--text);
+  }
+  .form-actions {
+    grid-column: span 2;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+  .form-actions button {
+    background: var(--primary-strong);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 0;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Preference Matrix */
+  .preference-matrix {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+  .preference-matrix-header {
+    font-weight: 800;
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--line);
+    padding-bottom: 8px;
+    text-align: center;
+  }
+  .preference-matrix-header:first-child {
+    text-align: left;
+  }
+  .preference-matrix-row {
+    display: contents;
+  }
+  .preference-matrix-cell {
+    padding: 8px;
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+  .preference-matrix-cell:first-child {
+    text-align: left;
+    font-weight: 700;
+  }
+
+  /* Verification grid */
+  .verification-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .verification-card {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .verification-status.verified {
+    color: var(--success);
+    font-weight: 800;
+  }
+  .verification-status.unverified {
+    color: var(--danger);
+    font-weight: 800;
+  }
+
+  /* Switches */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+  }
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .switch i {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--line);
+    transition: .4s;
+    border-radius: 28px;
+  }
+  .switch i:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  .switch input:checked + i {
+    background-color: var(--primary-strong);
+  }
+  .switch input:checked + i:before {
+    transform: translateX(22px);
+  }
+
+  /* Layout helper */
+  .section-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .section-title-row h2 {
+    margin: 0;
+  }
+  .saved-screen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+  }
+  .saved-screen-grid div {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .saved-screen-grid b {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 1.1rem;
+  }
+  .saved-screen-grid span {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="page profile-page" data-user="{{ current_user.id }}">
+
+  <header class="profile-hero">
+    <div class="profile-identity">
+      <span id="profileHeroAvatar" class="avatar avatar-xl">U</span>
+      <div>
+        <p class="eyebrow" style="margin:0 0 4px; text-transform:uppercase; font-size:0.8rem; font-weight:800; color:var(--muted)">Account workspace</p>
+        <h1 id="profileHeroName" style="margin:0;">My Profile</h1>
+        <p id="profileHeroEmail" class="muted" style="margin:4px 0 0;">Loading account...</p>
+      </div>
+    </div>
+    <div class="profile-meta">
+      <span>Member Since</span>
+      <b id="profileMemberSince">--</b>
+    </div>
+  </header>
+
+  <div class="profile-shell">
+    <aside class="profile-sidebar" aria-label="Profile sections">
+      <button class="profile-nav-item active" data-profile-section="dashboard" type="button">Dashboard</button>
+      <button class="profile-nav-item" data-profile-section="watchlists" type="button">My Watchlists</button>
+      <button class="profile-nav-item" data-profile-section="alerts" type="button">Alerts</button>
+      <button class="profile-nav-item" data-profile-section="saved" type="button">Saved Screens</button>
+      <button class="profile-nav-item" data-profile-section="settings" type="button">Account Settings</button>
+      <button class="profile-nav-item" data-profile-section="notifications" type="button">Notifications</button>
+      <button class="profile-nav-item" data-profile-section="security" type="button">Security</button>
+      <a class="profile-nav-item danger" href="{{ url_for('auth.logout') }}">Logout</a>
+    </aside>
+
+    <section class="profile-content" aria-live="polite">
+      <div id="profileDashboard" class="profile-section active">
+        <div class="profile-grid stats-grid">
+          <article class="profile-card"><span>Watchlists</span><b id="profileWatchCount">--</b></article>
+          <article class="profile-card"><span>Saved Stocks</span><b id="profileStockCount">--</b></article>
+          <article class="profile-card"><span>Active Alerts</span><b id="profileAlertCount">--</b></article>
+        </div>
+        <article class="profile-card">
+          <h2>Recent Searches</h2>
+          <div id="profileHistory" class="profile-list"></div>
+        </article>
+      </div>
+
+      <div id="profileWatchlists" class="profile-section">
+        <article class="profile-card">
+          <div class="section-title-row">
+            <div><h2>My Watchlists</h2><p class="muted">Review and manage your saved market lists.</p></div>
+            <a class="soft-action" href="/dashboard#watchlists">Create New</a>
+          </div>
+          <div id="profileWatchlistRows" class="management-list"></div>
+        </article>
+      </div>
+
+      <div id="profileAlerts" class="profile-section">
+        <article class="profile-card">
+          <div class="section-title-row">
+            <div><h2>Alerts</h2><p class="muted">Edit delivery rules and pause signals without deleting them.</p></div>
+            <a class="soft-action" href="/dashboard#alerts">New Alert</a>
+          </div>
+          <div id="profileAlertRows" class="management-list"></div>
+        </article>
+      </div>
+
+      <div id="profileSaved" class="profile-section">
+        <article class="profile-card">
+          <h2>Saved Screens</h2>
+          <div class="saved-screen-grid">
+            <div><b>Quality Compounders</b><span>ROCE, sales growth, debt filters</span></div>
+            <div><b>Value Opportunities</b><span>P/E, dividend yield, 52-week range</span></div>
+            <div><b>Momentum Watch</b><span>RSI, price strength, recent volume</span></div>
+          </div>
+        </article>
+      </div>
+
+      <div id="profileSettings" class="profile-section">
+        <article class="profile-card">
+          <h2>Account Settings</h2>
+          <form id="profileSettingsForm" class="settings-form">
+            <label>Change Name<input id="settingsName" type="text" required></label>
+            <label>Change Email<input id="settingsEmail" type="email" required></label>
+            <div class="form-actions"><button type="submit">Save Changes</button></div>
+          </form>
+        </article>
+        <article class="profile-card">
+          <h2>Change Password</h2>
+          <form id="profilePasswordForm" class="settings-form">
+            <label>Current Password<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+            <label>New Password<input id="newPassword" type="password" autocomplete="new-password" minlength="6" required></label>
+            <div class="form-actions"><button type="submit">Update Password</button></div>
+          </form>
+        </article>
+      </div>
+
+      <div id="profileNotifications" class="profile-section">
+        <article class="profile-card">
+          <div class="section-title-row">
+            <div><h2>Contact Verification</h2><p class="muted">Only verified channels receive alerts and notifications.</p></div>
+            <button id="requestPushPermission" class="soft-action" type="button" onclick="alert('Browser Push Notifications permission requested.')">Browser Push</button>
+          </div>
+          <div id="contactVerificationCards" class="verification-grid"></div>
+        </article>
+        <article class="profile-card">
+          <h2>Communication Preferences</h2>
+          <div id="channelPreferenceMatrix" class="preference-matrix"></div>
+        </article>
+        <article class="profile-card">
+          <h2>Notification Settings</h2>
+          <div id="notificationPreferenceRows" class="preference-list">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+              <span>Daily Market Digests</span>
+              <label class="switch"><input type="checkbox" checked disabled><i></i></label>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line);">
+              <span>Immediate Breaking Alerts</span>
+              <label class="switch"><input type="checkbox" checked disabled><i></i></label>
+            </div>
+          </div>
+        </article>
+        <article class="profile-card">
+          <h2>Notification History</h2>
+          <div id="notificationHistoryRows" class="management-list"></div>
+        </article>
+      </div>
+
+      <div id="profileSecurity" class="profile-section">
+        <article class="profile-card">
+          <div class="security-row">
+            <div><h2>Two-factor authentication</h2><p class="muted">Add an extra confirmation step to future sign-ins.</p></div>
+            <label class="switch security-switch"><input id="twoFactorToggle" type="checkbox"><i></i></label>
+          </div>
+        </article>
+        <article class="profile-card">
+          <div class="section-title-row">
+            <div><h2>Active Login Sessions</h2><p class="muted">Current browser sessions associated with this account.</p></div>
+            <button id="logoutAllDevices" class="danger-action ghost-btn" type="button" style="color:var(--danger)">Logout from all devices</button>
+          </div>
+          <div class="session-list">
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line);"><b>Current session</b><span>Windows desktop - active now</span></div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0;"><b>Remembered login</b><span>Last verified with your saved credentials</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</section>
+
+<script>
+  function switchProfileTab(sectionId) {
+    document.querySelectorAll(".profile-section").forEach(sec => sec.classList.remove("active"));
+    document.querySelectorAll(".profile-nav-item").forEach(btn => btn.classList.remove("active"));
+    
+    const targetSec = document.getElementById(`profile${capitalize(sectionId)}`);
+    const targetBtn = document.querySelector(`[data-profile-section="${sectionId}"]`);
+    
+    if (targetSec) targetSec.classList.add("active");
+    if (targetBtn) targetBtn.classList.add("active");
+    
+    window.location.hash = sectionId;
+  }
+
+  function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  document.querySelectorAll(".profile-nav-item[data-profile-section]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      switchProfileTab(btn.dataset.profileSection);
+    });
+  });
+
+  window.addEventListener("hashchange", () => {
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      switchProfileTab(hash);
+    }
+  });
+
+  window.addEventListener("DOMContentLoaded", () => {
+    const hash = window.location.hash.substring(1) || "dashboard";
+    switchProfileTab(hash);
+    loadProfileData();
+  });
+
+  async function loadProfileData() {
+    try {
+      const res = await fetch("/profile/api/data");
+      if (!res.ok) throw new Error("Failed to fetch profile");
+      const data = await res.json();
+      
+      // Header
+      document.getElementById("profileHeroName").innerText = data.full_name || data.username;
+      document.getElementById("profileHeroEmail").innerText = data.email;
+      document.getElementById("profileMemberSince").innerText = data.member_since;
+      
+      // Avatar: set first letter
+      const avatarLetter = (data.full_name || data.username || 'U').charAt(0).toUpperCase();
+      document.getElementById("profileHeroAvatar").innerText = avatarLetter;
+      
+      // Stats
+      document.getElementById("profileWatchCount").innerText = data.stats.watchlists;
+      document.getElementById("profileStockCount").innerText = data.stats.tracked_stocks;
+      document.getElementById("profileAlertCount").innerText = data.stats.active_alerts;
+      
+      // Recent Searches
+      const historyList = document.getElementById("profileHistory");
+      if (data.history.length > 0) {
+        historyList.innerHTML = data.history.map(h => `
+          <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line);">
+            <strong>${h.company}</strong>
+            <span class="muted">${h.searched_at}</span>
+          </div>
+        `).join("");
+      } else {
+        historyList.innerHTML = '<p class="muted">No recent searches yet.</p>';
+      }
+      
+      // Watchlists List
+      const watchRows = document.getElementById("profileWatchlistRows");
+      if (data.watchlists.length > 0) {
+        watchRows.innerHTML = data.watchlists.map(w => `
+          <div class="alert-card">
+            <div class="alert-info">
+              <strong>${w.name} ${w.is_default ? '<span class="badge">Default</span>' : ''}</strong>
+              <span>Stocks: ${w.item_count} | Created: ${w.created_at}</span>
+            </div>
+            <div class="alert-actions">
+              <a class="ghost-btn" href="/dashboard#watchlists">Open</a>
+            </div>
+          </div>
+        `).join("");
+      } else {
+        watchRows.innerHTML = '<p class="muted">No watchlists created yet.</p>';
+      }
+      
+      // Alerts List
+      const alertRows = document.getElementById("profileAlertRows");
+      if (data.alerts.length > 0) {
+        alertRows.innerHTML = data.alerts.map(a => `
+          <div class="alert-card">
+            <div class="alert-info">
+              <strong>${a.name}</strong>
+              <span>Stock: ${a.ticker} | Triggers: ${a.trigger_count} | Status: <span class="badge ${a.status === 'active' ? '' : 'danger'}">${a.status}</span></span>
+            </div>
+            <div class="alert-actions">
+              <button class="ghost-btn" onclick="toggleAlertFromProfile(${a.id}, '${a.status === 'active' ? 'pause' : 'resume'}')">
+                ${a.status === 'active' ? 'Pause' : 'Resume'}
+              </button>
+              <button class="danger-btn" onclick="toggleAlertFromProfile(${a.id}, 'delete')">Delete</button>
+            </div>
+          </div>
+        `).join("");
+      } else {
+        alertRows.innerHTML = '<p class="muted">No alerts configured yet.</p>';
+      }
+      
+      // Account Settings inputs
+      document.getElementById("settingsName").value = data.full_name;
+      document.getElementById("settingsEmail").value = data.email;
+      
+      // Verification state
+      const verifCards = document.getElementById("contactVerificationCards");
+      verifCards.innerHTML = `
+        <div class="verification-card">
+          <div>
+            <strong>Email Address</strong>
+            <p class="muted" style="margin:4px 0 0;">${data.email}</p>
+          </div>
+          <span class="verification-status ${data.email_verified ? 'verified' : 'unverified'}">
+            ${data.email_verified ? 'Verified' : 'Unverified'}
+          </span>
+        </div>
+        <div class="verification-card">
+          <div>
+            <strong>Mobile SMS</strong>
+            <p class="muted" style="margin:4px 0 0;">${data.phone_number || 'Not provided'}</p>
+          </div>
+          <span class="verification-status ${data.mobile_verified ? 'verified' : 'unverified'}">
+            ${data.mobile_verified ? 'Verified' : 'Unverified'}
+          </span>
+        </div>
+      `;
+      
+      // Preference matrix
+      const matrix = document.getElementById("channelPreferenceMatrix");
+      matrix.innerHTML = `
+        <div class="preference-matrix-header">Event</div>
+        <div class="preference-matrix-header">In App</div>
+        <div class="preference-matrix-header">Email</div>
+        <div class="preference-matrix-header">SMS</div>
+        <div class="preference-matrix-header">WhatsApp</div>
+        
+        <div class="preference-matrix-row">
+          <div class="preference-matrix-cell">Price Alerts</div>
+          <div class="preference-matrix-cell"><input type="checkbox" checked disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" ${data.sms_enabled ? '' : 'checked'} disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" ${data.sms_enabled ? 'checked' : ''} disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" ${data.whatsapp_number ? 'checked' : ''} disabled></div>
+        </div>
+        <div class="preference-matrix-row">
+          <div class="preference-matrix-cell">Account Security</div>
+          <div class="preference-matrix-cell"><input type="checkbox" checked disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" checked disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" ${data.phone_number ? 'checked' : ''} disabled></div>
+          <div class="preference-matrix-cell"><input type="checkbox" disabled></div>
+        </div>
+      `;
+      
+      // Notification History
+      const notifRows = document.getElementById("notificationHistoryRows");
+      if (data.notifications.length > 0) {
+        notifRows.innerHTML = data.notifications.map(n => `
+          <div style="padding:12px; border-bottom:1px solid var(--line); background:${n.is_read ? 'transparent' : 'var(--primary-soft)'}">
+            <p style="margin:0 0 4px; font-weight:700">${n.message}</p>
+            <span class="muted" style="font-size:0.8rem">${n.created_at}</span>
+          </div>
+        `).join("");
+      } else {
+        notifRows.innerHTML = '<p class="muted">No notifications history yet.</p>';
+      }
+      
+      // Security 2FA toggle
+      document.getElementById("twoFactorToggle").checked = data.two_factor_enabled;
+      
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function toggleAlertFromProfile(alertId, action) {
+    if (action === 'delete' && !confirm("Delete this alert?")) return;
+    try {
+      const res = await fetch(`/api/alerts/${alertId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action })
+      });
+      if (!res.ok) throw new Error("Failed");
+      loadProfileData();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  // Form submission listeners
+  document.getElementById("profileSettingsForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("settingsName").value.trim();
+    const email = document.getElementById("settingsEmail").value.trim();
+    
+    try {
+      const res = await fetch("/profile/api/update-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: name, email: email })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update settings");
+      alert(data.message);
+      loadProfileData();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  document.getElementById("profilePasswordForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const currentPassword = document.getElementById("currentPassword").value;
+    const newPassword = document.getElementById("newPassword").value;
+    
+    try {
+      const res = await fetch("/profile/api/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update password");
+      alert(data.message);
+      document.getElementById("currentPassword").value = "";
+      document.getElementById("newPassword").value = "";
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  document.getElementById("twoFactorToggle")?.addEventListener("change", async (e) => {
+    const enabled = e.target.checked;
+    try {
+      const res = await fetch("/profile/api/toggle-2fa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+    } catch (err) {
+      alert(err.message);
+      e.target.checked = !enabled; // revert
+    }
+  });
+
+  document.getElementById("logoutAllDevices")?.addEventListener("click", () => {
+    if (confirm("Confirm logout from all devices?")) {
+      window.location.href = "{{ url_for('auth.logout') }}";
+    }
+  });
+</script>
+{% endblock %}

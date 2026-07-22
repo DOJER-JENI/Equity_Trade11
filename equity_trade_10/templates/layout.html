@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or "Equity Dashboard" }}</title>
+    <script>
+        (() => {
+            const saved = localStorage.getItem("equity-theme");
+            const preferred = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+            document.documentElement.dataset.theme = saved || preferred;
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            color-scheme: light;
+            --bg:#f4f7fb; --panel:#ffffff; --panel-soft:#f8fbff; --text:#172033; --muted:#64748b; --line:#d9e2ef;
+            --primary:#2563eb; --primary-strong:#1d4ed8; --primary-soft:#eaf1ff; --danger:#dc2626; --success:#14804a; --warning:#b45309;
+            --nav:rgba(255,255,255,.9); --input:#ffffff; --hover:#f1f5f9; --shadow:0 10px 28px rgba(15,23,42,.08);
+        }
+        [data-theme="dark"] {
+            color-scheme: dark;
+            --bg:#080d16; --panel:#101827; --panel-soft:#151f31; --text:#eef4ff; --muted:#9aa8bd; --line:#263348;
+            --primary:#60a5fa; --primary-strong:#3b82f6; --primary-soft:#132b4f; --danger:#fb7185; --success:#34d399; --warning:#fbbf24;
+            --nav:rgba(13,20,32,.92); --input:#0c1422; --hover:#1c2a40; --shadow:0 18px 45px rgba(0,0,0,.35);
+        }
+        * { box-sizing:border-box; font-family:"Manrope",sans-serif; letter-spacing:0; }
+        html, body, .navbar, .panel, .ghost-btn, .user-chip, .text-input, select.text-input, textarea.text-input, table, th, td, .profile-menu-panel, .toast {
+            transition:background-color .25s ease, color .25s ease, border-color .25s ease, box-shadow .25s ease;
+        }
+        body { margin:0; background:var(--bg); color:var(--text); }
+        a { color:inherit; text-decoration:none; }
+        .navbar { position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:14px 24px; background:var(--nav); backdrop-filter:blur(14px); border-bottom:1px solid var(--line); }
+        .brand { display:flex; align-items:center; gap:12px; font-size:1.1rem; font-weight:800; }
+        .brand-mark { width:38px; height:38px; display:grid; place-items:center; border-radius:8px; background:#0f766e; color:white; box-shadow:0 10px 22px rgba(15,118,110,.18); }
+        .nav-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
+        .user-chip,.ghost-btn,.primary-btn,.danger-btn,.theme-toggle { border-radius:8px; padding:10px 14px; font-size:.92rem; font-weight:700; border:1px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+        .user-chip,.ghost-btn { background:var(--panel); border-color:var(--line); color:var(--text); }
+        .ghost-btn:hover,.user-chip:hover,.profile-menu-panel a:hover,.profile-menu-panel button:hover { background:var(--hover); }
+        .primary-btn { background:var(--primary-strong); color:white; box-shadow:0 14px 30px rgba(37,99,235,.22); }
+        .primary-btn:hover { filter:brightness(1.05); }
+        .danger-btn { background:var(--panel); color:var(--danger); border-color:color-mix(in srgb, var(--danger) 25%, transparent); }
+        .theme-toggle { background:var(--panel); border-color:var(--line); color:var(--text); min-width:106px; justify-content:space-between; }
+        .theme-toggle-track { width:38px; height:22px; border-radius:999px; padding:3px; background:var(--primary-soft); border:1px solid var(--line); }
+        .theme-toggle-knob { width:16px; height:16px; border-radius:50%; display:block; background:var(--primary-strong); transform:translateX(0); transition:transform .25s ease, background-color .25s ease; }
+        [data-theme="dark"] .theme-toggle-knob { transform:translateX(16px); background:var(--warning); }
+        .page { width:min(1240px, calc(100vw - 30px)); margin:24px auto 48px; }
+        .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); }
+        .panel[style*="linear-gradient"] { background:var(--panel-soft) !important; }
+        .section { padding:28px; }
+        .breadcrumbs { margin:0 0 14px; font-size:.95rem; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap; }
+        .breadcrumbs span { color:var(--muted); }
+        .page-title { margin:0; font-size:clamp(2rem,3vw,3rem); font-weight:800; }
+        .page-subtitle { margin:10px 0 0; color:var(--muted); line-height:1.7; }
+        .field-label { display:block; margin-bottom:8px; font-size:.95rem; font-weight:700; color:var(--muted); }
+        .text-input, select.text-input, textarea.text-input { width:100%; border:1px solid var(--line); border-radius:8px; padding:13px 14px; font-size:1rem; color:var(--text); background:var(--input); outline:none; }
+        .text-input:focus { border-color:var(--primary); box-shadow:0 0 0 4px color-mix(in srgb, var(--primary) 16%, transparent); }
+        .stack { display:grid; gap:16px; }
+        .split { display:grid; grid-template-columns:1.05fr .95fr; gap:24px; }
+        .muted { color:var(--muted); }
+        .badge { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:7px 11px; font-size:.82rem; font-weight:800; background:var(--primary-soft); color:var(--primary); }
+        .empty-state { padding:28px; text-align:center; color:var(--muted); border:1px dashed var(--line); border-radius:8px; background:var(--panel-soft); }
+        .metric-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:14px; }
+        .metric { padding:18px; }
+        .metric strong { display:block; font-size:1.5rem; margin-top:6px; }
+        .profile-menu { position:relative; }
+        .profile-menu-panel { display:none; position:absolute; right:0; top:calc(100% + 10px); min-width:280px; background:var(--panel); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); padding:10px; z-index:50; }
+        .profile-menu.is-open .profile-menu-panel { display:grid; gap:4px; }
+        .profile-menu-head { display:flex; align-items:center; gap:12px; padding:10px 10px 12px; border-bottom:1px solid var(--line); margin-bottom:4px; }
+        .avatar { width:42px; height:42px; border-radius:50%; display:grid; place-items:center; flex:0 0 auto; background:#0f172a; color:#fff; font-weight:800; overflow:hidden; }
+        .avatar img { width:100%; height:100%; object-fit:cover; }
+        .profile-menu-panel a,.profile-menu-panel button { padding:10px 12px; border-radius:6px; color:var(--text); font-weight:700; background:transparent; border:0; text-align:left; cursor:pointer; display:flex; gap:9px; align-items:center; }
+        .toast-stack { position:fixed; right:18px; bottom:18px; display:grid; gap:10px; z-index:120; width:min(360px, calc(100vw - 36px)); }
+        .toast { background:#0f172a; color:white; border-radius:8px; padding:14px 16px; box-shadow:0 18px 40px rgba(15,23,42,.25); }
+        table { width:100%; border-collapse:collapse; background:transparent; }
+        th,td { padding:16px 14px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
+        th { color:var(--muted); font-size:.86rem; text-transform:uppercase; }
+        tr:last-child td { border-bottom:none; }
+        tr:hover td { background:color-mix(in srgb, var(--primary-soft) 38%, transparent); }
+        .table-wrap { overflow-x:auto; }
+        .flash { padding:12px 16px; border-radius:8px; margin-bottom:14px; border:1px solid var(--line); }
+        .flash.success { background:color-mix(in srgb, var(--success) 14%, var(--panel)); color:var(--success); }
+        .flash.error { background:color-mix(in srgb, var(--danger) 12%, var(--panel)); color:var(--danger); }
+        @media (max-width:900px) {
+            .split { grid-template-columns:1fr; }
+            .navbar { align-items:flex-start; padding:16px 18px; }
+            .nav-actions { width:100%; }
+            .page { width:min(100vw - 20px, 1240px); }
+            .section { padding:20px; }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    {% if not hide_header %}
+    <div class="navbar">
+        <a class="brand" href="{{ url_for('main.dashboard') if current_user.is_authenticated else url_for('main.landing') }}">
+            <span class="brand-mark"><i class="fa-solid fa-chart-line"></i></span>
+            <span>Equity Dashboard</span>
+        </a>
+        <div class="nav-actions">
+            {% if current_user.is_authenticated %}
+                <a class="ghost-btn" href="/dashboard#overview">Overview</a>
+                <a class="ghost-btn" href="/dashboard#watchlists">Watchlists</a>
+                <a class="ghost-btn" href="/dashboard#search">Search</a>
+                <a class="ghost-btn" href="/dashboard#screener">Screener</a>
+                <a class="ghost-btn" href="/dashboard#alerts">Alerts</a>
+                {% if current_user.is_admin %}
+                <a class="ghost-btn" href="{{ url_for('admin.dashboard') }}">Admin</a>
+                {% endif %}
+                <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark and light theme" aria-pressed="false">
+                    <span class="theme-toggle-track"><span class="theme-toggle-knob"></span></span>
+                    <span id="themeToggleText">Light</span>
+                </button>
+                <div class="profile-menu" id="profileMenu">
+                    <button class="user-chip" id="profileMenuButton" type="button" aria-haspopup="menu" aria-expanded="false">
+                        <span class="avatar" style="width:26px; height:26px;">
+                            {% if current_user.profile and current_user.profile.profile_photo_url %}
+                            <img src="{{ current_user.profile.profile_photo_url }}" alt="">
+                            {% else %}
+                            {{ current_user.username[:1]|upper }}
+                            {% endif %}
+                        </span>
+                        {{ current_user.username }} <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="profile-menu-panel" role="menu" aria-label="User menu">
+                        <div class="profile-menu-head">
+                            <span class="avatar">
+                                {% if current_user.profile and current_user.profile.profile_photo_url %}
+                                <img src="{{ current_user.profile.profile_photo_url }}" alt="">
+                                {% else %}
+                                {{ current_user.username[:1]|upper }}
+                                {% endif %}
+                            </span>
+                            <div>
+                                <strong>{{ current_user.profile.full_name if current_user.profile and current_user.profile.full_name else current_user.username }}</strong>
+                                <div class="muted" style="font-size:.82rem;">{{ current_user.email }}</div>
+                            </div>
+                        </div>
+                        <a role="menuitem" href="{{ url_for('profile.index') }}"><i class="fa-regular fa-user"></i> My Profile</a>
+                        <a role="menuitem" href="{{ url_for('profile.index', section='account') }}"><i class="fa-solid fa-gear"></i> Settings</a>
+                        <a role="menuitem" href="{{ url_for('auth.logout') }}"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</a>
+                    </div>
+                </div>
+            {% else %}
+                <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle dark and light theme" aria-pressed="false">
+                    <span class="theme-toggle-track"><span class="theme-toggle-knob"></span></span>
+                    <span id="themeToggleText">Light</span>
+                </button>
+                <a class="ghost-btn" href="{{ url_for('auth.login') }}">Login</a>
+                <a class="primary-btn" href="{{ url_for('auth.register') }}">Create account</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    <main class="page">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+        const themeToggle = document.getElementById("themeToggle");
+        const themeToggleText = document.getElementById("themeToggleText");
+        function syncThemeToggle() {
+            const theme = document.documentElement.dataset.theme || "light";
+            if (themeToggle) themeToggle.setAttribute("aria-pressed", theme === "dark" ? "true" : "false");
+            if (themeToggleText) themeToggleText.textContent = theme === "dark" ? "Dark" : "Light";
+        }
+        themeToggle?.addEventListener("click", () => {
+            const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+            document.documentElement.dataset.theme = next;
+            localStorage.setItem("equity-theme", next);
+            syncThemeToggle();
+        });
+        syncThemeToggle();
+
+        const profileMenu = document.getElementById("profileMenu");
+        const profileMenuButton = document.getElementById("profileMenuButton");
+        profileMenuButton?.addEventListener("click", () => {
+            const isOpen = profileMenu.classList.toggle("is-open");
+            profileMenuButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        });
+        document.addEventListener("click", (event) => {
+            if (!profileMenu || profileMenu.contains(event.target)) return;
+            profileMenu.classList.remove("is-open");
+            profileMenuButton?.setAttribute("aria-expanded", "false");
+        });
+        profileMenu?.querySelectorAll("a").forEach(link => link.addEventListener("click", () => {
+            profileMenu.classList.remove("is-open");
+            profileMenuButton?.setAttribute("aria-expanded", "false");
+        }));
+    </script>
+    {% if current_user.is_authenticated %}
+    <div id="toastStack" class="toast-stack"></div>
+    <script>
+        const seenNotifications = new Set(JSON.parse(sessionStorage.getItem("seenNotifications") || "[]"));
+        function showToast(message) {
+            const stack = document.getElementById("toastStack");
+            if (!stack) return;
+            const toast = document.createElement("div");
+            toast.className = "toast";
+            toast.textContent = message;
+            stack.appendChild(toast);
+            setTimeout(() => toast.remove(), 6500);
+        }
+        async function pollNotifications() {
+            try {
+                const res = await fetch("/api/notifications?unread=true");
+                const items = await res.json();
+                (items || []).slice(0, 5).forEach(item => {
+                    if (!seenNotifications.has(item.id)) {
+                        seenNotifications.add(item.id);
+                        showToast(item.message);
+                    }
+                });
+                sessionStorage.setItem("seenNotifications", JSON.stringify([...seenNotifications].slice(-50)));
+            } catch (err) {}
+        }
+        pollNotifications();
+        setInterval(pollNotifications, 10000);
+    </script>
+    {% endif %}
+</body>
+</html>

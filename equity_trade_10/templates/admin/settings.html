@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="panel section" style="max-width:800px;">
+    <h1 class="page-title">API / Provider Settings</h1>
+
+    <form method="post" class="stack" style="margin-top:20px;">
+        <div>
+            <label class="field-label">Data Provider</label>
+            <input class="text-input" name="DATA_PROVIDER" value="{{ settings.get('DATA_PROVIDER', '') }}">
+        </div>
+
+        <div>
+            <label class="field-label">SMS Provider</label>
+            <input class="text-input" name="SMS_PROVIDER" value="{{ settings.get('SMS_PROVIDER', '') }}">
+        </div>
+
+        <div>
+            <label class="field-label">SMTP Host</label>
+            <input class="text-input" name="SMTP_HOST" value="{{ settings.get('SMTP_HOST', '') }}">
+        </div>
+
+        <div>
+            <label class="field-label">SMTP User</label>
+            <input class="text-input" name="SMTP_USER" value="{{ settings.get('SMTP_USER', '') }}">
+        </div>
+
+        <button class="primary-btn" type="submit">Save Settings</button>
+    </form>
+</section>
+{% endblock %}

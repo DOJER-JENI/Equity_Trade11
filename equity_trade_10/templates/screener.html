@@ -1,0 +1,103 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="panel section">
+    <h1 class="page-title">Filter Engine</h1>
+    <p class="page-subtitle">Build professional stock screens with multiple dynamic conditions.</p>
+
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin:22px 0;">
+        <button class="primary-btn" type="button" onclick="addFilter()">Add Filter</button>
+        <button class="ghost-btn" type="button" onclick="runScreen()">Apply Filters</button>
+        <button class="ghost-btn" type="button" onclick="clearFilters()">Clear</button>
+        <button class="ghost-btn" type="button" onclick="logic = logic === 'AND' ? 'OR' : 'AND'; document.getElementById('logicLabel').innerText = logic;">Logic: <span id="logicLabel">AND</span></button>
+    </div>
+
+    <div id="filters" class="stack"></div>
+
+    <div class="table-wrap" style="margin-top:24px;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Stock</th><th>Price</th><th>P/E</th><th>Volume</th><th>52W High</th><th>52W Low</th><th>RSI</th><th>Open</th>
+                </tr>
+            </thead>
+            <tbody id="screenRows">
+                <tr><td colspan="8">Add filters and apply to see matching stocks.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<script>
+const fieldGroups = {
+  "Price & Volume": ["last_price", "volume", "market_cap", "week_52_high", "week_52_low"],
+  "Valuation": ["pe_ratio", "pb_ratio", "dividend_yield"],
+  "Growth": ["eps_growth_yoy", "revenue_growth_yoy", "profit_margin", "roe"],
+  "Technical": ["rsi_14", "ema_20", "ema_50", "ema_200", "volume_ratio"]
+};
+const operators = [">", "<", ">=", "<=", "=", "BETWEEN"];
+let logic = "AND";
+
+function fieldOptions() {
+  return Object.entries(fieldGroups).map(([group, fields]) =>
+    `<optgroup label="${group}">${fields.map(f => `<option value="${f}">${f.replaceAll("_", " ")}</option>`).join("")}</optgroup>`
+  ).join("");
+}
+
+function addFilter() {
+  const row = document.createElement("div");
+  row.className = "panel";
+  row.style.cssText = "padding:14px; border-radius:16px; display:grid; grid-template-columns:1fr 150px 1fr auto; gap:12px; align-items:center;";
+  row.innerHTML = `
+    <select class="text-input filter-field">${fieldOptions()}</select>
+    <select class="text-input filter-op">${operators.map(o => `<option value="${o}">${o}</option>`).join("")}</select>
+    <input class="text-input filter-value" placeholder="Value or min,max">
+    <button class="danger-btn" type="button" onclick="this.closest('.panel').remove()">Delete</button>
+  `;
+  document.getElementById("filters").appendChild(row);
+}
+
+function clearFilters() {
+  document.getElementById("filters").innerHTML = "";
+  document.getElementById("screenRows").innerHTML = '<tr><td colspan="8">Add filters and apply to see matching stocks.</td></tr>';
+}
+
+async function runScreen() {
+  const conditions = [...document.querySelectorAll("#filters .panel")].map(row => {
+    const field = row.querySelector(".filter-field").value;
+    const operator = row.querySelector(".filter-op").value;
+    const raw = row.querySelector(".filter-value").value.trim();
+    const value = operator === "BETWEEN"
+      ? { min: raw.split(",")[0], max: raw.split(",")[1] }
+      : raw;
+    return { field, operator, value };
+  }).filter(c => c.value && (!c.value.min || c.value.max));
+
+  const res = await fetch("/api/screen", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ logic, conditions, sort_by: "volume", sort_dir: "DESC", limit: 100 })
+  });
+  const data = await res.json();
+  const rows = document.getElementById("screenRows");
+  if (!res.ok) {
+    rows.innerHTML = `<tr><td colspan="8">${data.error || "Screen failed"}</td></tr>`;
+    return;
+  }
+  rows.innerHTML = data.data.map(row => `
+    <tr>
+      <td>${row.company}</td>
+      <td>${Number(row.last_price || 0).toFixed(2)}</td>
+      <td>${Number(row.pe_ratio || 0).toFixed(2)}</td>
+      <td>${Number(row.volume || 0).toLocaleString()}</td>
+      <td>${Number(row.week_52_high || 0).toFixed(2)}</td>
+      <td>${Number(row.week_52_low || 0).toFixed(2)}</td>
+      <td>${Number(row.rsi_14 || 0).toFixed(2)}</td>
+      <td><a class="ghost-btn" href="/chart/${row.company}">View</a></td>
+    </tr>
+  `).join("") || '<tr><td colspan="8">No matching stocks.</td></tr>';
+}
+
+addFilter();
+</script>
+{% endblock %}

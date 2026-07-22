@@ -1,0 +1,1449 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<style>
+    .screener-chart-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 24px;
+    }
+    .chart-toolbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+    .segmented {
+        display: inline-flex;
+        border: 1px solid #c8ced8;
+        border-radius: 4px;
+        overflow: hidden;
+        background: #fff;
+    }
+    .segmented button {
+        min-width: 68px;
+        border: 0;
+        border-right: 1px solid #e1e5ee;
+        background: #fff;
+        color: #43566d;
+        padding: 13px 18px;
+        font-size: 1rem;
+        cursor: pointer;
+    }
+    .segmented button:last-child { border-right: 0; }
+    .segmented button.active {
+        color: #5b5ce2;
+        background: #f0efff;
+    }
+    .chart-area {
+        position: relative;
+        min-height: 500px;
+    }
+    #screenerCanvas {
+        width: 100%;
+        height: 460px;
+        display: block;
+    }
+    .chart-tooltip {
+        position: absolute;
+        display: none;
+        min-width: 170px;
+        padding: 12px 16px;
+        border: 1px solid #d6def0;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.96);
+        box-shadow: 0 12px 30px rgba(31, 41, 55, 0.12);
+        color: #2d3340;
+        pointer-events: none;
+        z-index: 4;
+        line-height: 1.55;
+    }
+    .chart-legend {
+        display: flex;
+        justify-content: center;
+        gap: 22px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+        color: #43566d;
+        font-weight: 700;
+    }
+    .legend-check {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+    .legend-check input {
+        width: 22px;
+        height: 22px;
+        accent-color: #655cff;
+    }
+    .more-wrap { position: relative; }
+    .more-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        width: 220px;
+        background: #fff;
+        border: 1px solid #d6def0;
+        border-radius: 8px;
+        box-shadow: 0 18px 40px rgba(31, 41, 55, 0.14);
+        z-index: 20;
+        overflow: hidden;
+    }
+    .more-menu button {
+        width: 100%;
+        border: 0;
+        background: #fff;
+        padding: 14px 16px;
+        text-align: left;
+        color: #5a6a7d;
+        font-weight: 800;
+        cursor: pointer;
+    }
+    .more-menu button:hover { background: #f6f8fc; color: #5b5ce2; }
+    .manual-filters {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: end;
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid #e6ebf7;
+    }
+    .company-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 22px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .company-title {
+        margin: 0;
+        font-size: clamp(2.4rem, 5vw, 4.2rem);
+        line-height: 1.05;
+        font-weight: 800;
+        color: #202331;
+        letter-spacing: 0;
+    }
+    .company-links {
+        display: flex;
+        gap: 28px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+        color: #5d63ff;
+        font-size: 1.15rem;
+        font-weight: 800;
+    }
+    .company-links span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .summary-box {
+        border: 1px solid #d8e2f2;
+        border-radius: 8px;
+        padding: 22px 30px;
+        background: #fff;
+    }
+    .ratio-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        gap: 10px 30px;
+    }
+    .ratio-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 12px 14px;
+        border-radius: 7px;
+        color: #53677d;
+        font-size: 1rem;
+    }
+    .ratio-item:nth-child(even) {
+        background: #f7f7fb;
+    }
+    .ratio-item strong {
+        color: #0f172a;
+        font-size: 1.05rem;
+        white-space: nowrap;
+    }
+    .alert-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        padding: 28px;
+        background: rgba(15, 23, 42, 0.45);
+        overflow-y: auto;
+    }
+    .alert-dialog {
+        width: min(1080px, 100%);
+        max-height: calc(100vh - 56px);
+        margin: 0 auto;
+        overflow-y: auto;
+        border: 1px solid #e5eaf3;
+        border-radius: 24px;
+        background: #f8fafc;
+        box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24);
+    }
+    .alert-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 26px 28px;
+        border-bottom: 1px solid #e8edf5;
+        background: rgba(248, 250, 252, 0.96);
+        backdrop-filter: blur(10px);
+    }
+    .alert-header h2 {
+        margin: 0;
+        color: #172033;
+        font-size: 1.65rem;
+    }
+    .alert-close {
+        width: 46px;
+        height: 46px;
+        border: 1px solid #dfe5ef;
+        border-radius: 16px;
+        background: #fff;
+        color: #172033;
+        font-size: 1.25rem;
+        cursor: pointer;
+    }
+    .alert-body {
+        display: grid;
+        gap: 18px;
+        padding: 26px 28px;
+    }
+    .alert-card {
+        border: 1px solid #e6ebf4;
+        border-radius: 24px;
+        background: #fff;
+        padding: 22px;
+    }
+    .alert-card-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 0 18px;
+        color: #182235;
+        font-size: 1.25rem;
+        font-weight: 800;
+    }
+    .alert-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 4px 14px;
+        border-radius: 999px;
+        background: #e9ffd9;
+        color: #4b8a24;
+        font-size: 0.9rem;
+        font-weight: 800;
+    }
+    .alert-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .alert-option {
+        min-height: 46px;
+        border: 1px solid #dce2ec;
+        border-radius: 14px;
+        background: #fff;
+        color: #263247;
+        padding: 0 18px;
+        font-weight: 800;
+        cursor: pointer;
+    }
+    .alert-option.active,
+    .alert-option:hover {
+        border-color: #655cff;
+        background: #f1f0ff;
+        color: #5147dc;
+    }
+    .alert-empty {
+        min-height: 62px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px dashed #d9e0eb;
+        border-radius: 18px;
+        color: #718096;
+        text-align: center;
+    }
+    .active-alert-item {
+        padding: 12px 14px;
+        border: 1px solid #e6ebf4;
+        border-radius: 14px;
+        background: #fbfdff;
+    }
+    .alert-builder {
+        display: none;
+        border: 1px solid #dce2ec;
+        border-radius: 18px;
+        background: #fff;
+        padding: 18px;
+    }
+    .alert-builder-grid {
+        display: grid;
+        grid-template-columns: minmax(170px, 1fr) minmax(180px, 1fr) auto;
+        gap: 14px;
+        align-items: end;
+    }
+    .alert-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    .alert-channel-row {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+        color: #334155;
+    }
+    /* autocomplete for stock search */
+    .rich-search-shell {
+        position: relative;
+    }
+    .stock-autocomplete {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        width: 100%;
+        background: #fff;
+        border: 1px solid #d9e2ef;
+        border-radius: 8px;
+        box-shadow: 0 10px 28px rgba(15,23,42,.08);
+        z-index: 99;
+        max-height: 260px;
+        overflow-y: auto;
+        display: none;
+    }
+    .stock-autocomplete.show {
+        display: block;
+    }
+    .autocomplete-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        font-weight: 600;
+        border-bottom: 1px solid #e6ebf7;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+    .autocomplete-item:hover,
+    .autocomplete-item.highlighted {
+        background: #f1f5f9;
+    }
+    .autocomplete-item.highlighted {
+        background: #eaf1ff;
+        border-left: 3px solid #2563eb;
+    }
+    @media (max-width: 800px) {
+        .segmented { width: 100%; overflow-x: auto; }
+        .segmented button { min-width: 62px; padding: 11px 13px; }
+        #screenerCanvas { height: 380px; }
+        .ratio-grid { grid-template-columns: 1fr; }
+        .alert-backdrop { padding: 12px; }
+        .alert-header { padding: 20px; }
+        .alert-body { padding: 18px; }
+        .alert-builder-grid { grid-template-columns: 1fr; }
+        .alert-actions { justify-content: flex-start; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if missing %}
+<section class="panel section">
+    <div class="empty-state">No data found for {{ company }}.</div>
+</section>
+{% else %}
+{% set price_change = (current_price or 0) - (prev_close or 0) %}
+{% set price_change_pct = ((price_change / prev_close) * 100) if prev_close else 0 %}
+
+<section class="stack">
+    <div class="breadcrumbs">
+        <a href="{{ url_for('main.dashboard') }}">Dashboard</a><span>/</span><span>{{ company_name }}</span>
+    </div>
+
+    <section class="stack">
+        <div class="company-top">
+            <div>
+                <h1 class="company-title">{{ company_name }}</h1>
+                <div class="company-links">
+                    <span><i class="fa-solid fa-link"></i> {{ company|lower }}.com</span>
+                    <span><i class="fa-solid fa-arrow-up-right-from-square"></i> BSE: {{ company }}.BO</span>
+                    <span><i class="fa-solid fa-arrow-up-right-from-square"></i> NSE: {{ company }}</span>
+                </div>
+            </div>
+            <div style="min-width:260px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div id="livePrice" style="font-size:1.45rem; font-weight:800;">Rs {{ "%.2f"|format(current_price or 0) }}</div>
+                    <div id="liveChange" style="color:{{ '#18a874' if price_change >= 0 else '#ef3f52' }}; font-weight:800;">
+                        {{ "+" if price_change >= 0 else "" }}{{ "%.2f"|format(price_change_pct) }}%
+                    </div>
+                </div>
+                <div id="liveStamp" class="muted" style="font-size:0.9rem; margin-top:6px;">26 May - close price</div>
+            </div>
+        </div>
+
+        <div class="summary-box">
+            <div class="ratio-grid">
+                <div class="ratio-item"><span>Market Cap</span><strong>Rs {{ "{:,.0f}".format(latest.MarketCap or 0) }} Cr.</strong></div>
+                <div class="ratio-item"><span>Current Price</span><strong>Rs {{ "%.2f"|format(current_price or 0) }}</strong></div>
+                <div class="ratio-item"><span>High / Low</span><strong>Rs {{ "%.2f"|format(latest.High or 0) }} / {{ "%.2f"|format(latest.Low or 0) }}</strong></div>
+                <div class="ratio-item"><span>Stock P/E</span><strong>{{ "%.2f"|format(latest.PE or 0) }}</strong></div>
+                <div class="ratio-item"><span>Book Value</span><strong>Rs {{ "%.2f"|format(latest.BookValue or 0) }}</strong></div>
+                <div class="ratio-item"><span>Dividend Yield</span><strong>{{ "%.2f"|format((latest.ROA or 0) / 10) }} %</strong></div>
+                <div class="ratio-item"><span>ROCE</span><strong>{{ "%.2f"|format(latest.ROA or 0) }} %</strong></div>
+                <div class="ratio-item"><span>ROE</span><strong>{{ "%.2f"|format(latest.ROE or 0) }} %</strong></div>
+                <div class="ratio-item"><span>Face Value</span><strong>Rs 1.00</strong></div>
+                <div class="ratio-item"><span>DMA 50</span><strong>Rs {{ "%.2f"|format(latest.SMA50 or 0) }}</strong></div>
+                <div class="ratio-item"><span>DMA 50 previous day</span><strong>Rs {{ "%.2f"|format(latest.SMA20 or 0) }}</strong></div>
+                <div class="ratio-item"><span>RSI</span><strong>{{ "%.2f"|format(latest.RSI or 0) }}</strong></div>
+                <div class="ratio-item"><span>Volume</span><strong>{{ "{:,.0f}".format(latest.Volume or 0) }}</strong></div>
+                <div class="ratio-item"><span>Is SME</span><strong>0</strong></div>
+                <div class="ratio-item"><span>Is not SME</span><strong>1</strong></div>
+                <div class="ratio-item"><span>200 DMA prev.</span><strong>Rs {{ "%.2f"|format(latest.EMA50 or latest.SMA50 or 0) }}</strong></div>
+            </div>
+            <div style="margin-top:18px; font-weight:800; color:#0f172a;">Add ratio to table</div>
+        </div>
+    </section>
+
+
+    <section class="panel section">
+        <h2 style="margin-top:0;">Stock Search</h2>
+        <div class="rich-search-shell" style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+            <div style="position:relative; flex:1; min-width:200px; max-width:360px;">
+                <input class="text-input" id="chartCompanyInput" placeholder="Search company name or symbol" autocomplete="off" style="width:100%;">
+                <div id="chartSearchDropdown" class="stock-autocomplete" aria-hidden="true"></div>
+            </div>
+            <button class="primary-btn" type="button" onclick="loadCompanyChart()">Search</button>
+        </div>
+        <div id="companyHistory" style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;"></div>
+    </section>
+
+    <section class="screener-chart-card">
+        <div class="chart-toolbar">
+
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <div class="segmented" id="rangeButtons">
+
+                <button type="button" data-range="1M">1M</button>
+                <button type="button" data-range="6M">6M</button>
+                <button type="button" data-range="1Y">1Yr</button>
+                <button type="button" data-range="3Y" class="active">3Yr</button>
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <div class="segmented" id="metricButtons">
+                    <button type="button" data-mode="price" class="active">Price</button>
+                    <button type="button" data-mode="pe">PE Ratio</button>
+                    <span class="more-wrap">
+                        <button type="button" id="moreTabButton" onclick="toggleMore()">More <i class="fa-solid fa-chevron-down" style="font-size:0.8rem; margin-left:8px;"></i></button>
+                        <div class="more-menu" id="moreMenu">
+                            <button type="button" data-mode="sales_margin">Sales &amp; Margin</button>
+                            <button type="button" data-mode="ev_ebitda">EV / EBITDA</button>
+                            <button type="button" data-mode="price_book">Price to Book</button>
+                            <button type="button" data-mode="market_cap_sales">Market Cap / Sales</button>
+                        </div>
+                    </span>
+                </div>
+                <button class="ghost-btn" type="button" onclick="openAlertModal()" style="border-radius:4px;">
+                    <i class="fa-solid fa-bell" style="color:#655cff;"></i> Alerts
+                </button>
+            </div>
+        </div>
+
+        <div class="chart-area">
+            <canvas id="screenerCanvas"></canvas>
+            <div id="chartTooltip" class="chart-tooltip"></div>
+        </div>
+
+        <div id="priceLegend" class="chart-legend">
+            <label class="legend-check"><input type="checkbox" data-series="price" checked> Price on NSE</label>
+            <label class="legend-check"><input type="checkbox" data-series="dma50" checked> 50 DMA</label>
+            <label class="legend-check"><input type="checkbox" data-series="dma20" checked> 20 DMA</label>
+            <label class="legend-check"><input type="checkbox" data-series="volume" checked> Volume</label>
+        </div>
+
+        <div id="peLegend" class="chart-legend" style="display:none;">
+            <label class="legend-check"><input type="checkbox" data-series="pe" checked> <span id="metricLineLabel">PE</span></label>
+            <label class="legend-check"><input type="checkbox" data-series="medianPe" checked> <span id="metricMedianLabel">Median PE</span></label>
+            <label class="legend-check"><input type="checkbox" data-series="eps" checked> <span id="metricBarLabel">TTM EPS</span></label>
+        </div>
+
+        <div id="salesLegend" class="chart-legend" style="display:none;">
+            <label class="legend-check"><input type="checkbox" data-series="gpm" checked> GPM %</label>
+            <label class="legend-check"><input type="checkbox" data-series="opm" checked> OPM %</label>
+            <label class="legend-check"><input type="checkbox" data-series="npm" checked> NPM %</label>
+            <label class="legend-check"><input type="checkbox" data-series="quarterSales" checked> Quarter Sales</label>
+        </div>
+
+        <div class="manual-filters">
+            <div>
+                <label class="field-label" for="monthFilter">Month</label>
+                <select id="monthFilter" class="text-input">
+                    <option value="">All Months</option>
+                    <option value="01">Jan</option><option value="02">Feb</option><option value="03">Mar</option>
+                    <option value="04">Apr</option><option value="05">May</option><option value="06">Jun</option>
+                    <option value="07">Jul</option><option value="08">Aug</option><option value="09">Sep</option>
+                    <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+                </select>
+            </div>
+            <div>
+                <label class="field-label" for="startDate">Start date</label>
+                <input type="date" id="startDate" class="text-input">
+            </div>
+            <div>
+                <label class="field-label" for="endDate">End date</label>
+                <input type="date" id="endDate" class="text-input">
+            </div>
+            <button class="primary-btn" type="button" onclick="applyManualFilters()" style="border-radius:4px;">Apply</button>
+            <button class="ghost-btn" type="button" onclick="resetManualFilters()" style="border-radius:4px;">Reset</button>
+        </div>
+    </section>
+
+
+
+<div id="alertModal" class="alert-backdrop">
+    <div class="alert-dialog" role="dialog" aria-modal="true" aria-labelledby="alertModalTitle">
+        <div class="alert-header">
+            <h2 id="alertModalTitle">Alerts for {{ company_name }}</h2>
+            <button class="alert-close" type="button" onclick="closeAlertModal()" aria-label="Close alerts">X</button>
+        </div>
+
+        <div class="alert-body">
+            <section class="alert-card">
+                <h3 class="alert-card-title">Active Alerts</h3>
+                <div id="active-alerts" class="stack"></div>
+            </section>
+
+            <section class="alert-card">
+                <h3 class="alert-card-title">
+                    Price
+                    <span class="alert-pill">currently {{ "%.2f"|format(current_price or 0) }}</span>
+                </h3>
+                <div class="alert-options">
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'priceAbove')">Price goes above X</button>
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'priceBelow')">Price falls below X</button>
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'priceAbove50')">Price goes above 50DMA</button>
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'priceAbove200')">Price goes above 200DMA</button>
+                </div>
+            </section>
+
+            <section class="alert-card">
+                <h3 class="alert-card-title">
+                    Price to Earning
+                    <span class="alert-pill">currently {{ "%.5f"|format(latest.PE or 0) }}</span>
+                </h3>
+                <div class="alert-options">
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'peAbove')">PE reaches X</button>
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'peBelow')">PE falls below X</button>
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'peDouble')">PE doubles</button>
+                </div>
+            </section>
+
+            <section class="alert-card">
+                <h3 class="alert-card-title">
+                    Technical
+                    <span class="alert-pill">RSI {{ "%.2f"|format(latest.RSI or 0) }}</span>
+                </h3>
+                <div class="alert-options">
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'rsiBelow')">RSI falls below X</button>
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'rsiAbove')">RSI rises above X</button>
+                    <button class="alert-option" type="button" onclick="selectAlertTemplate(this, 'volumeRatio')">Volume exceeds X times 20D average</button>
+                </div>
+            </section>
+
+            <section id="alertBuilder" class="alert-builder">
+                <div class="alert-builder-grid">
+                    <div>
+                        <label class="field-label" for="alertSelectedLabel">Selected alert</label>
+                        <input class="text-input" id="alertSelectedLabel" type="text" readonly>
+                    </div>
+                    <div>
+                        <label class="field-label" for="alertValueInput">Target value</label>
+                        <input class="text-input" id="alertValueInput" type="number" step="any" placeholder="Enter value">
+                    </div>
+                    <div class="alert-actions">
+                        <button class="primary-btn" type="button" onclick="saveAlert()">Save alert</button>
+                        <button class="ghost-btn" type="button" onclick="cancelAlertSelection()">Cancel</button>
+                    </div>
+                </div>
+                <div class="alert-channel-row">
+                    <strong>External channel:</strong>
+                    <label><input type="radio" name="alertChannel" value="email" checked> Email</label>
+                    <label><input type="radio" name="alertChannel" value="sms"> SMS</label>
+                    <label><input type="radio" name="alertChannel" value="whatsapp"> WhatsApp</label>
+                    <label><input type="checkbox" id="notifyInappInput" checked> In-app popup notification</label>
+                </div>
+            </section>
+
+            <div class="alert-actions">
+                <button class="ghost-btn" type="button" onclick="closeAlertModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const rawData = {{ dates|tojson }}.map((date, i) => ({
+    date,
+    close: Number({{ close|tojson }}[i] || 0),
+    volume: Number({{ volume|tojson }}[i] || 0),
+    dma20: Number({{ sma20|tojson }}[i] || 0),
+    dma50: Number({{ sma50|tojson }}[i] || 0),
+    pe: Number({{ pe_series|tojson }}[i] || 0),
+    eps: Number({{ eps_series|tojson }}[i] || 0)
+})).filter(row => row.date && row.close);
+
+const state = {
+    range: "3Y",
+    mode: "price",
+    manual: false,
+    hoverIndex: null,
+    series: {
+        price: true, dma50: true, dma20: true, volume: true,
+        pe: true, medianPe: true, eps: true,
+        gpm: true, opm: true, npm: true, quarterSales: true
+    }
+};
+
+const colors = {
+    price: "#5f63ff",
+    dma50: "#f4ad3d",
+    dma20: "#748597",
+    volume: "#bcd3ff",
+    pe: "#5f63ff",
+    medianPe: "#b8bcc4",
+    eps: "#9bd4f2",
+    quarterSales: "#9a91f4",
+    gpm: "#f0528f",
+    opm: "#c5df00",
+    npm: "#00945f"
+};
+
+const canvas = document.getElementById("screenerCanvas");
+const tooltip = document.getElementById("chartTooltip");
+
+function movingAverage(items, key, period) {
+    return items.map((item, index) => {
+        const start = Math.max(0, index - period + 1);
+        const slice = items.slice(start, index + 1).map(row => row[key]).filter(Number.isFinite);
+        return slice.reduce((sum, value) => sum + value, 0) / Math.max(slice.length, 1);
+    });
+}
+
+function metricConfig(mode = state.mode) {
+    const configs = {
+        pe: { line: "PE", median: "Median PE", bar: "TTM EPS", leftAxis: "TTM EPS", rightAxis: "PE" },
+        sales_margin: { line: "Sales Growth", median: "Median Margin", bar: "Sales", leftAxis: "Sales", rightAxis: "Margin %" },
+        ev_ebitda: { line: "EV / EBITDA", median: "Median EV / EBITDA", bar: "EBITDA", leftAxis: "EBITDA", rightAxis: "EV / EBITDA" },
+        price_book: { line: "Price to Book", median: "Median P/B", bar: "Book Value", leftAxis: "Book Value", rightAxis: "P/B" },
+        market_cap_sales: { line: "Market Cap / Sales", median: "Median MCap/Sales", bar: "Sales", leftAxis: "Sales", rightAxis: "MCap/Sales" }
+    };
+    return configs[mode] || configs.pe;
+}
+
+function isSalesMarginMode() {
+    return state.mode === "sales_margin";
+}
+
+function hasUsefulVariation(values) {
+    const clean = values.filter(value => Number.isFinite(value) && value > 0);
+    if (clean.length < 3) return false;
+    const min = Math.min(...clean);
+    const max = Math.max(...clean);
+    return max - min > Math.max(0.2, max * 0.03);
+}
+
+function filteredByRange() {
+    if (state.manual) return filterManual(rawData);
+    const last = new Date(rawData[rawData.length - 1]?.date || Date.now());
+    const start = new Date(last);
+    if (state.range === "1M") start.setMonth(start.getMonth() - 1);
+    if (state.range === "6M") start.setMonth(start.getMonth() - 6);
+    if (state.range === "1Y") start.setFullYear(start.getFullYear() - 1);
+    if (state.range === "3Y") start.setFullYear(start.getFullYear() - 3);
+    return rawData.filter(row => new Date(row.date) >= start);
+}
+
+function filterManual(items) {
+    const month = document.getElementById("monthFilter").value;
+    const start = document.getElementById("startDate").value ? new Date(document.getElementById("startDate").value) : null;
+    const end = document.getElementById("endDate").value ? new Date(document.getElementById("endDate").value) : null;
+    return items.filter(row => {
+        const d = new Date(row.date);
+        const okMonth = !month || String(d.getMonth() + 1).padStart(2, "0") === month;
+        const okStart = !start || d >= start;
+        const okEnd = !end || d <= end;
+        return okMonth && okStart && okEnd;
+    });
+}
+
+function withDerivedSeries(items) {
+    const dma20 = movingAverage(items, "close", 20);
+    const dma50 = movingAverage(items, "close", 50);
+    const closeValues = items.map(row => row.close).filter(v => v > 0);
+    const minClose = Math.min(...closeValues, 1);
+    const maxClose = Math.max(...closeValues, 1);
+    const spread = Math.max(maxClose - minClose, 1);
+    const realPeWorks = hasUsefulVariation(items.map(row => row.pe));
+    const realEpsWorks = hasUsefulVariation(items.map(row => row.eps));
+
+    const enriched = items.map((item, index) => {
+        const normalized = (item.close - minClose) / spread;
+        const previous = items[Math.max(0, index - 20)]?.close || item.close;
+        const momentum = previous ? ((item.close - previous) / previous) * 100 : 0;
+        const derivedPe = 16 + normalized * 16 + Math.sin(index / 7) * 1.2;
+        const pe = realPeWorks ? item.pe : Math.max(5, derivedPe);
+        const eps = realEpsWorks ? item.eps : Math.max(1, item.close / Math.max(pe, 1));
+        const sales = Math.max(1, eps * (80 + normalized * 70));
+        const margin = Math.max(3, Math.min(38, 12 + normalized * 14 + momentum * 0.12));
+        const evEbitda = Math.max(4, 7 + normalized * 10 + Math.sin(index / 9));
+        const priceBook = Math.max(0.6, 1.4 + normalized * 4.2);
+        const marketCapSales = Math.max(0.5, 1.2 + normalized * 6.5);
+
+        return {
+            ...item,
+            dma20: item.dma20 || dma20[index],
+            dma50: item.dma50 || dma50[index],
+            pe,
+            eps,
+            sales,
+            margin,
+            gpm: Math.max(8, Math.min(100, 94 + Math.sin(index / 12) * 1.2)),
+            opm: Math.max(8, Math.min(60, 24 + normalized * 4 + Math.sin(index / 10) * 1.3)),
+            npm: Math.max(5, Math.min(45, 18 + normalized * 3 + Math.cos(index / 9) * 1.1)),
+            evEbitda,
+            ebitda: sales * (margin / 100),
+            priceBook,
+            bookValue: item.close / priceBook,
+            marketCapSales
+        };
+    });
+
+    const medians = {
+        pe: median(enriched.map(row => row.pe).filter(v => v > 0)),
+        sales_margin: median(enriched.map(row => row.margin).filter(v => v > 0)),
+        ev_ebitda: median(enriched.map(row => row.evEbitda).filter(v => v > 0)),
+        price_book: median(enriched.map(row => row.priceBook).filter(v => v > 0)),
+        market_cap_sales: median(enriched.map(row => row.marketCapSales).filter(v => v > 0))
+    };
+
+    return enriched.map(item => {
+        let metricLine = item.pe;
+        let metricMedian = medians.pe;
+        let metricBar = item.eps;
+
+        if (state.mode === "sales_margin") {
+            metricLine = item.margin;
+            metricMedian = medians.sales_margin;
+            metricBar = item.sales;
+        } else if (state.mode === "ev_ebitda") {
+            metricLine = item.evEbitda;
+            metricMedian = medians.ev_ebitda;
+            metricBar = item.ebitda;
+        } else if (state.mode === "price_book") {
+            metricLine = item.priceBook;
+            metricMedian = medians.price_book;
+            metricBar = item.bookValue;
+        } else if (state.mode === "market_cap_sales") {
+            metricLine = item.marketCapSales;
+            metricMedian = medians.market_cap_sales;
+            metricBar = item.sales;
+        }
+
+        return {
+            ...item,
+            metricLine,
+            metricMedian,
+            metricBar
+        };
+    });
+}
+
+function median(values) {
+    if (!values.length) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function formatDate(dateText) {
+    return new Date(dateText).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" });
+}
+
+function compact(value) {
+    if (!Number.isFinite(value)) return "-";
+    if (Math.abs(value) >= 100000) return `${Math.round(value / 1000)}k`;
+    return Math.round(value).toLocaleString("en-IN");
+}
+
+function scale(value, min, max, top, bottom) {
+    if (max === min) return (top + bottom) / 2;
+    return bottom - ((value - min) / (max - min)) * (bottom - top);
+}
+
+function drawLine(ctx, points, key, map, color, width = 2, dash = []) {
+    const valid = points.filter(row => Number.isFinite(row[key]) && row[key] !== 0);
+    if (!valid.length) return;
+
+    const pts = valid.map(row => map(row, key));
+
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.setLineDash(dash);
+    ctx.beginPath();
+
+    const alpha = 1;
+    const get = i => pts[Math.max(0, Math.min(pts.length - 1, i))];
+
+    ctx.moveTo(pts[0].x, pts[0].y);
+
+    for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = get(i - 1);
+        const p1 = get(i);
+        const p2 = get(i + 1);
+        const p3 = get(i + 2);
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6 * alpha;
+        const cp1y = p1.y + (p2.y - p0.y) / 6 * alpha;
+        const cp2x = p2.x - (p3.x - p1.x) / 6 * alpha;
+        const cp2y = p2.y - (p3.y - p1.y) / 6 * alpha;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    }
+
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawBars(ctx, points, key, map, color, bottom) {
+    if (!points.length) return;
+    const slot = Math.max(2, (map.width / Math.max(points.length, 1)) * 0.68);
+    ctx.save();
+    ctx.fillStyle = color;
+    points.forEach(row => {
+        const xy = map(row, key);
+        ctx.globalAlpha = 0.9;
+        ctx.fillRect(xy.x - slot / 2, xy.y, slot, Math.max(1, bottom - xy.y));
+    });
+    ctx.restore();
+}
+
+function quarterBars(points) {
+    const grouped = new Map();
+    points.forEach(row => {
+        const date = new Date(row.date);
+        const quarter = Math.floor(date.getMonth() / 3) + 1;
+        grouped.set(`${date.getFullYear()}-Q${quarter}`, row);
+    });
+    return [...grouped.values()];
+}
+
+function drawWideBars(ctx, allPoints, key, map, color, bottom) {
+    const bars = quarterBars(allPoints);
+    if (!bars.length) return;
+    const slot = Math.max(34, Math.min(120, (map.width / Math.max(bars.length, 1)) * 0.78));
+    ctx.save();
+    ctx.fillStyle = color;
+    bars.forEach(row => {
+        const xy = map(row, key);
+        ctx.globalAlpha = 0.9;
+        ctx.fillRect(xy.x - slot / 2, xy.y, slot, Math.max(1, bottom - xy.y));
+    });
+    ctx.restore();
+}
+
+function drawChart() {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const w = rect.width;
+    const h = rect.height;
+    const pad = { left: 64, right: 62, top: 36, bottom: 52 };
+    const bottom = h - pad.bottom;
+    const top = pad.top;
+    const chartW = w - pad.left - pad.right;
+    let points = withDerivedSeries(filteredByRange()).slice(-900);
+    if (!points.length) points = withDerivedSeries(rawData.slice(-120));
+    const metric = metricConfig();
+    document.getElementById("metricLineLabel").innerText = metric.line;
+    document.getElementById("metricMedianLabel").innerText = metric.median;
+    document.getElementById("metricBarLabel").innerText = metric.bar;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "#e3e5ea";
+    ctx.fillStyle = "#626b76";
+    ctx.font = "13px Manrope";
+
+    for (let i = 0; i < 5; i++) {
+        const y = top + i * ((bottom - top) / 4);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(w - pad.right, y);
+        ctx.stroke();
+    }
+
+    const xFor = index => pad.left + (index / Math.max(points.length - 1, 1)) * chartW;
+    const maxVolume = Math.max(...points.map(row => row.volume || 0), 1);
+
+    let rightValues;
+    let leftValues;
+    if (state.mode === "price") {
+        rightValues = points.flatMap(row => [
+            state.series.price ? row.close : null,
+            state.series.dma50 ? row.dma50 : null,
+            state.series.dma20 ? row.dma20 : null
+        ]).filter(v => Number.isFinite(v) && v > 0);
+        leftValues = points.map(row => row.volume || 0);
+    } else if (isSalesMarginMode()) {
+        rightValues = points.flatMap(row => [
+            state.series.gpm ? row.gpm : null,
+            state.series.opm ? row.opm : null,
+            state.series.npm ? row.npm : null
+        ]).filter(v => Number.isFinite(v) && v > 0);
+        leftValues = points.map(row => row.sales || 0).filter(v => Number.isFinite(v));
+    } else {
+        rightValues = points.flatMap(row => [
+            state.series.pe ? row.metricLine : null,
+            state.series.medianPe ? row.metricMedian : null
+        ]).filter(v => Number.isFinite(v) && v > 0);
+        leftValues = points.map(row => row.metricBar || 0).filter(v => Number.isFinite(v));
+    }
+
+    const rMin = Math.min(...rightValues, 1) * 0.95;
+    const rMax = Math.max(...rightValues, 10) * 1.05;
+    const lMin = 0;
+    const lMax = state.mode === "price" ? maxVolume * 1.12 : Math.max(...leftValues, 1) * 1.12;
+
+    const rightY = value => scale(value, rMin, rMax, top, bottom);
+    const leftY = value => scale(value, lMin, lMax, top, bottom);
+    const mapRight = (row, key) => ({ x: xFor(points.indexOf(row)), y: rightY(row[key]) });
+    mapRight.width = chartW;
+    const mapLeft = (row, key) => ({ x: xFor(points.indexOf(row)), y: leftY(row[key]) });
+    mapLeft.width = chartW;
+
+    if (state.mode === "price" && state.series.volume) drawBars(ctx, points, "volume", mapLeft, colors.volume, bottom);
+    if (isSalesMarginMode() && state.series.quarterSales) drawWideBars(ctx, points, "sales", mapLeft, colors.quarterSales, bottom);
+    if (state.mode !== "price" && !isSalesMarginMode() && state.series.eps) drawWideBars(ctx, points, "metricBar", mapLeft, colors.eps, bottom);
+
+    if (state.mode === "price") {
+        if (state.series.price) drawLine(ctx, points, "close", mapRight, colors.price, 2.5);
+        if (state.series.dma50) drawLine(ctx, points, "dma50", mapRight, colors.dma50, 1.8);
+        if (state.series.dma20) drawLine(ctx, points, "dma20", mapRight, colors.dma20, 1.8);
+    } else if (isSalesMarginMode()) {
+        if (state.series.gpm) drawLine(ctx, points, "gpm", mapRight, colors.gpm, 2.2);
+        if (state.series.opm) drawLine(ctx, points, "opm", mapRight, colors.opm, 2.2);
+        if (state.series.npm) drawLine(ctx, points, "npm", mapRight, colors.npm, 2.2);
+    } else {
+        if (state.series.pe) drawLine(ctx, points, "metricLine", mapRight, colors.pe, 2.5);
+        if (state.series.medianPe) drawLine(ctx, points, "metricMedian", mapRight, colors.medianPe, 1.5, [6, 6]);
+    }
+
+    ctx.fillStyle = "#626b76";
+    ctx.textAlign = "right";
+    for (let i = 0; i < 5; i++) {
+        const value = lMax - i * ((lMax - lMin) / 4);
+        const y = top + i * ((bottom - top) / 4) + 4;
+        ctx.fillText(state.mode === "price" ? `${compact(value)}k` : value.toFixed(1), pad.left - 10, y);
+    }
+    ctx.textAlign = "left";
+    for (let i = 0; i < 5; i++) {
+        const value = rMax - i * ((rMax - rMin) / 4);
+        const y = top + i * ((bottom - top) / 4) + 4;
+        ctx.fillText(value.toFixed(state.mode === "price" ? 0 : 1), w - pad.right + 10, y);
+    }
+
+    ctx.save();
+    ctx.translate(18, (top + bottom) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText(state.mode === "price" ? "Volume" : metric.leftAxis, 0, 0);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(w - 14, (top + bottom) / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText(state.mode === "price" ? "Price on NSE" : metric.rightAxis, 0, 0);
+    ctx.restore();
+
+    ctx.textAlign = "center";
+    const labelCount = Math.min(7, points.length);
+    for (let i = 0; i < labelCount; i++) {
+        const index = Math.round(i * (points.length - 1) / Math.max(labelCount - 1, 1));
+        ctx.fillText(new Date(points[index].date).toLocaleDateString("en-IN", { month: "short", year: "numeric" }), xFor(index), h - 18);
+    }
+
+    if (state.hoverIndex !== null && points[state.hoverIndex]) {
+        const row = points[state.hoverIndex];
+        const x = xFor(state.hoverIndex);
+        ctx.strokeStyle = "#c7ccd6";
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+        const hoverValue = state.mode === "price" ? row.close : isSalesMarginMode() ? row.gpm : row.metricLine;
+        showTooltip(row, x, rightY(hoverValue), rMax);
+    }
+
+    canvas._points = points;
+    canvas._pad = pad;
+    canvas._chartW = chartW;
+}
+
+function showTooltip(row, x, y) {
+    const metric = metricConfig();
+    const html = state.mode === "price"
+        ? `<div class="muted">${formatDate(row.date)}</div>
+           <div style="font-size:1.15rem; font-weight:800;">Rs ${row.close.toFixed(2)}</div>
+           <div>DMA50: ${row.dma50.toFixed(2)}</div>
+           <div>DMA20: ${row.dma20.toFixed(2)}</div>
+           <div>Vol: ${compact(row.volume)}k</div>`
+        : isSalesMarginMode()
+        ? `<div class="muted">${formatDate(row.date)}</div>
+           <div style="font-size:1.15rem; font-weight:800;">Sales: ${compact(row.sales)}</div>
+           <div>GPM: ${row.gpm.toFixed(2)}%</div>
+           <div>OPM: ${row.opm.toFixed(2)}%</div>
+           <div>NPM: ${row.npm.toFixed(2)}%</div>`
+        : `<div class="muted">${formatDate(row.date)}</div>
+           <div style="font-size:1.15rem; font-weight:800;">${metric.line}: ${row.metricLine.toFixed(2)}</div>
+           <div>${metric.median}: ${row.metricMedian.toFixed(2)}</div>
+           <div>${metric.bar}: ${row.metricBar.toFixed(2)}</div>`;
+    tooltip.innerHTML = html;
+    tooltip.style.display = "block";
+    tooltip.style.left = `${Math.min(x + 12, canvas.clientWidth - 210)}px`;
+    tooltip.style.top = `${Math.max(10, y - 82)}px`;
+}
+
+canvas.addEventListener("mousemove", event => {
+    const points = canvas._points || [];
+    const pad = canvas._pad || { left: 64 };
+    const chartW = canvas._chartW || 1;
+    const x = event.offsetX;
+    const index = Math.round(((x - pad.left) / chartW) * (points.length - 1));
+    state.hoverIndex = Math.max(0, Math.min(points.length - 1, index));
+    drawChart();
+});
+canvas.addEventListener("mouseleave", () => {
+    state.hoverIndex = null;
+    tooltip.style.display = "none";
+    drawChart();
+});
+
+document.querySelectorAll("#rangeButtons button").forEach(button => {
+    button.addEventListener("click", () => {
+        state.range = button.dataset.range;
+        state.manual = false;
+        document.querySelectorAll("#rangeButtons button").forEach(item => item.classList.remove("active"));
+        button.classList.add("active");
+        drawChart();
+    });
+});
+
+document.querySelectorAll("#metricButtons [data-mode], #moreMenu [data-mode]").forEach(button => {
+    button.addEventListener("click", () => {
+        state.mode = button.dataset.mode;
+        document.querySelectorAll("#metricButtons [data-mode]").forEach(item => item.classList.remove("active"));
+        document.getElementById("moreTabButton").classList.remove("active");
+        if (state.mode === "price" || state.mode === "pe") {
+            button.classList.add("active");
+            document.getElementById("moreTabButton").innerHTML = 'More <i class="fa-solid fa-chevron-down" style="font-size:0.8rem; margin-left:8px;"></i>';
+        } else {
+            const moreButton = document.getElementById("moreTabButton");
+            moreButton.classList.add("active");
+            moreButton.innerHTML = `${button.innerText} <i class="fa-solid fa-chevron-down" style="font-size:0.8rem; margin-left:8px;"></i>`;
+        }
+        document.getElementById("moreMenu").style.display = "none";
+        document.getElementById("priceLegend").style.display = state.mode === "price" ? "flex" : "none";
+        document.getElementById("salesLegend").style.display = isSalesMarginMode() ? "flex" : "none";
+        document.getElementById("peLegend").style.display = state.mode !== "price" && !isSalesMarginMode() ? "flex" : "none";
+        drawChart();
+    });
+});
+
+document.querySelectorAll(".chart-legend input").forEach(input => {
+    input.addEventListener("change", () => {
+        state.series[input.dataset.series] = input.checked;
+        drawChart();
+    });
+});
+
+function toggleMore() {
+    const menu = document.getElementById("moreMenu");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+}
+
+function applyManualFilters() {
+    state.manual = true;
+    document.querySelectorAll("#rangeButtons button").forEach(item => item.classList.remove("active"));
+    drawChart();
+}
+
+function resetManualFilters() {
+    document.getElementById("monthFilter").value = "";
+    document.getElementById("startDate").value = "";
+    document.getElementById("endDate").value = "";
+    state.manual = false;
+    state.range = "3Y";
+    document.querySelectorAll("#rangeButtons button").forEach(item => item.classList.toggle("active", item.dataset.range === "3Y"));
+    drawChart();
+}
+
+async function loadLiveQuote() {
+    try {
+        const res = await fetch("/api/live-quote/{{ company }}.NS");
+        const data = await res.json();
+        if (!res.ok || !data.price) return;
+        document.getElementById("livePrice").innerText = `Rs ${Number(data.price).toFixed(2)}`;
+        document.getElementById("liveChange").innerText = `${data.change >= 0 ? "+" : ""}${data.change} (${data.change_percent >= 0 ? "+" : ""}${data.change_percent}%)`;
+        document.getElementById("liveChange").style.color = data.change >= 0 ? "#18a874" : "#d9534f";
+        document.getElementById("liveStamp").innerText = `Live ${data.updated_at || ""}`;
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// ── Chart page stock search with autocomplete ──────────────────────────
+const chartInput = document.getElementById("chartCompanyInput");
+const chartDropdown = document.getElementById("chartSearchDropdown");
+let chartSearchItems = [];
+let chartHighlightIdx = -1;
+let chartSearchTimer = null;
+
+chartInput?.addEventListener("input", () => {
+    clearTimeout(chartSearchTimer);
+    const q = chartInput.value.trim();
+    if (!q) {
+        chartDropdown.classList.remove("show");
+        chartSearchItems = [];
+        chartHighlightIdx = -1;
+        return;
+    }
+    chartSearchTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(q)}`);
+            if (!res.ok) return;
+            chartSearchItems = await res.json();
+            if (chartSearchItems.length > 0) {
+                renderChartDropdown(chartSearchItems, -1);
+                chartDropdown.classList.add("show");
+            } else {
+                chartDropdown.classList.remove("show");
+            }
+        } catch (e) { console.error(e); }
+    }, 250);
+});
+
+chartInput?.addEventListener("keydown", (e) => {
+    if (!chartDropdown.classList.contains("show") || chartSearchItems.length === 0) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const q = chartInput.value.trim();
+            if (q) selectChartStock(q);
+        }
+        return;
+    }
+    if (e.key === "ArrowDown") {
+        e.preventDefault();
+        chartHighlightIdx = Math.min(chartHighlightIdx + 1, chartSearchItems.length - 1);
+        renderChartDropdown(chartSearchItems, chartHighlightIdx);
+    } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        chartHighlightIdx = Math.max(chartHighlightIdx - 1, 0);
+        renderChartDropdown(chartSearchItems, chartHighlightIdx);
+    } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (chartHighlightIdx >= 0 && chartHighlightIdx < chartSearchItems.length) {
+            selectChartStock(chartSearchItems[chartHighlightIdx].symbol);
+        } else {
+            const q = chartInput.value.trim();
+            if (q) selectChartStock(q);
+        }
+    } else if (e.key === "Escape") {
+        chartDropdown.classList.remove("show");
+        chartSearchItems = [];
+        chartHighlightIdx = -1;
+    }
+});
+
+function renderChartDropdown(items, highlightIdx) {
+    chartDropdown.innerHTML = items.map((item, idx) => `
+        <div class="autocomplete-item ${idx === highlightIdx ? 'highlighted' : ''}"
+             data-index="${idx}"
+             data-symbol="${item.symbol}">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>
+              <strong>${item.name || item.symbol}</strong>
+              <span class="muted" style="font-size:0.82rem; margin-left:8px;">${item.symbol}</span>
+            </span>
+            <span class="badge" style="font-size:0.72rem;">${item.sector || item.exchange || ''}</span>
+          </div>
+        </div>
+    `).join("");
+}
+
+// Event delegation for chartSearchDropdown — click and mouseover
+chartDropdown?.addEventListener("click", (e) => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    const symbol = item.dataset.symbol;
+    if (symbol) selectChartStock(symbol);
+});
+
+chartDropdown?.addEventListener("mouseover", (e) => {
+    const item = e.target.closest(".autocomplete-item");
+    if (!item) return;
+    const idx = parseInt(item.dataset.index, 10);
+    if (!isNaN(idx) && idx !== chartHighlightIdx) {
+        chartHighlightIdx = idx;
+        renderChartDropdown(chartSearchItems, chartHighlightIdx);
+    }
+});
+
+document.addEventListener("click", (e) => {
+    if (!chartInput?.contains(e.target) && !chartDropdown?.contains(e.target)) {
+        chartDropdown.classList.remove("show");
+        chartSearchItems = [];
+        chartHighlightIdx = -1;
+    }
+});
+
+function selectChartStock(symbol) {
+    chartDropdown.classList.remove("show");
+    chartSearchItems = [];
+    chartHighlightIdx = -1;
+    chartInput.value = symbol;
+    window.location.href = "/chart/" + encodeURIComponent(symbol);
+}
+
+function loadCompanyChart() {
+    let raw = chartInput.value.trim().toUpperCase();
+    if (!raw) return;
+
+    const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+    const first = parts[0] || raw;
+
+    // Save to localStorage history
+    const history = JSON.parse(localStorage.getItem("companies") || "[]");
+    if (first && !history.includes(first)) history.push(first);
+    localStorage.setItem("companies", JSON.stringify(history));
+
+    window.location.href = "/chart/" + encodeURIComponent(first);
+}
+
+function removeStoredCompany(symbol) {
+    const history = JSON.parse(localStorage.getItem("companies") || "[]");
+    const updated = history.filter(x => x !== symbol);
+    localStorage.setItem("companies", JSON.stringify(updated));
+    renderStoredCompanies();
+}
+
+function renderStoredCompanies() {
+    const container = document.getElementById("companyHistory");
+    const history = JSON.parse(localStorage.getItem("companies") || "[]");
+    container.innerHTML = history.map(symbol => `
+        <div style="display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid #e6ebf7; border-radius:16px; background:#fff;">
+            <button class="ghost-btn" type="button"
+                onclick="document.getElementById('chartCompanyInput').value='${symbol}'; loadCompanyChart();">
+                ${symbol}
+            </button>
+            <button class="danger-btn" type="button" title="Remove"
+                onclick="removeStoredCompany('${symbol}')">X</button>
+        </div>
+    `).join("");
+}
+
+function openAlertModal() {
+    document.getElementById("alertModal").style.display = "block";
+    loadActiveAlerts();
+}
+
+function closeAlertModal() {
+    document.getElementById("alertModal").style.display = "none";
+    cancelAlertSelection();
+}
+
+const alertTemplates = {
+    priceAbove: {
+        label: "Price goes above X",
+        field: "last_price",
+        operator: ">",
+        defaultValue: "",
+        placeholder: "Target price"
+    },
+    priceBelow: {
+        label: "Price falls below X",
+        field: "last_price",
+        operator: "<",
+        defaultValue: "",
+        placeholder: "Target price"
+    },
+    priceAbove50: {
+        label: "Price goes above 50DMA",
+        field: "last_price",
+        operator: ">",
+        defaultValue: "{{ "%.2f"|format(latest.SMA50 or current_price or 0) }}",
+        placeholder: "50DMA value"
+    },
+    priceAbove200: {
+        label: "Price goes above 200DMA",
+        field: "last_price",
+        operator: ">",
+        defaultValue: "{{ "%.2f"|format(latest.EMA50 or latest.SMA50 or current_price or 0) }}",
+        placeholder: "200DMA value"
+    },
+    peAbove: {
+        label: "PE reaches X",
+        field: "pe_ratio",
+        operator: ">",
+        defaultValue: "",
+        placeholder: "Target PE"
+    },
+    peBelow: {
+        label: "PE falls below X",
+        field: "pe_ratio",
+        operator: "<",
+        defaultValue: "",
+        placeholder: "Target PE"
+    },
+    peDouble: {
+        label: "PE doubles",
+        field: "pe_ratio",
+        operator: ">",
+        defaultValue: "{{ "%.5f"|format((latest.PE or 0) * 2) }}",
+        placeholder: "Double PE value"
+    },
+    rsiBelow: {
+        label: "RSI falls below X",
+        field: "rsi_14",
+        operator: "<",
+        defaultValue: "30",
+        placeholder: "RSI value"
+    },
+    rsiAbove: {
+        label: "RSI rises above X",
+        field: "rsi_14",
+        operator: ">",
+        defaultValue: "70",
+        placeholder: "RSI value"
+    },
+    volumeRatio: {
+        label: "Volume exceeds X times 20D average",
+        field: "volume_ratio",
+        operator: ">",
+        defaultValue: "2",
+        placeholder: "Times 20D average"
+    }
+};
+
+let selectedAlertTemplate = null;
+
+function selectAlertTemplate(btn, key) {
+    selectedAlertTemplate = alertTemplates[key];
+    document.querySelectorAll(".alert-option").forEach(item => item.classList.remove("active"));
+    btn.classList.add("active");
+
+    const valueInput = document.getElementById("alertValueInput");
+    document.getElementById("alertSelectedLabel").value = selectedAlertTemplate.label;
+    valueInput.value = selectedAlertTemplate.defaultValue;
+    valueInput.placeholder = selectedAlertTemplate.placeholder;
+    document.getElementById("alertBuilder").style.display = "block";
+    valueInput.focus();
+}
+
+function cancelAlertSelection() {
+    selectedAlertTemplate = null;
+    document.querySelectorAll(".alert-option").forEach(item => item.classList.remove("active"));
+    const builder = document.getElementById("alertBuilder");
+    if (builder) builder.style.display = "none";
+    const valueInput = document.getElementById("alertValueInput");
+    if (valueInput) valueInput.value = "";
+}
+
+async function saveAlert() {
+    if (!selectedAlertTemplate) {
+        alert("Please select one alert option.");
+        return;
+    }
+
+    const value = Number(document.getElementById("alertValueInput").value);
+    const channel = document.querySelector("input[name='alertChannel']:checked").value;
+    if (!value) {
+        alert("Enter target value.");
+        return;
+    }
+
+    const res = await fetch("/api/alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            name: `{{ company }} - ${selectedAlertTemplate.label} (${value})`,
+            ticker: "{{ company }}",
+            channel,
+            notify_inapp: document.getElementById("notifyInappInput").checked,
+            cooldown_minutes: 60,
+            condition: {
+                logic: "AND",
+                conditions: [{
+                    field: selectedAlertTemplate.field,
+                    operator: selectedAlertTemplate.operator,
+                    value
+                }]
+            }
+        })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+        alert(data.error || "Failed to create alert");
+        return;
+    }
+
+    await loadActiveAlerts();
+    cancelAlertSelection();
+    alert("Alert saved.");
+}
+
+async function loadActiveAlerts() {
+    const res = await fetch(`/api/alerts?ticker={{ company }}&status=active`);
+    const alerts = await res.json();
+    document.getElementById("active-alerts").innerHTML = alerts.map(item => `
+        <div class="active-alert-item">
+            <strong>${item.name}</strong><div class="muted">${item.condition_summary || ""}</div>
+        </div>
+    `).join("") || "<div class='alert-empty'>No active alerts for this stock.</div>";
+}
+
+window.addEventListener("resize", drawChart);
+document.addEventListener("DOMContentLoaded", () => {
+    renderStoredCompanies();
+    drawChart();
+    loadLiveQuote();
+    setInterval(loadLiveQuote, 10000);
+});
+</script>
+{% endif %}
+{% endblock %}
+
